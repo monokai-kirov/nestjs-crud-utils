@@ -1,8 +1,46 @@
+# Requirements
+```ts
+-- postgresql
+-- redis
+```
+
 # Install
 
-## PeerDependencies and dotenv
+## PeerDependencies
 ```bash
-npm install --save @nestjs/common @nestjs/core @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata dotenv
+npm install --save @nestjs/common @nestjs/core dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata
+```
+
+## Dependencies clarifying
+```ts
+// basic nestjs
+@nestjs/common
+@nestjs/core
+rxjs
+reflect-metadata
+
+// config
+dotenv
+@nestjs/config
+
+// database
+@nestjs/sequelize
+sequelize
+sequelize-typescript
+pg
+
+// file upload
+@nestjs/platform-express
+
+// rate-limit
+@nestjs/throttler
+
+// open api
+@nestjs/swagger
+nestjs-swagger-api-implicit-queries-decorator
+
+// websockets
+@nestjs/websockets
 ```
 
 ## main.ts
@@ -131,7 +169,6 @@ export class CategoryController extends CrudController {
 ## src/admin/admin.module.ts
 ```ts
 import { Category } from './models/category.model';
-import { CategoryLogo } from './models/category.logo.model';
 import { CategoryService } from './services/category.service';
 import { CategoryController } from './controllers/category.controller';
 
