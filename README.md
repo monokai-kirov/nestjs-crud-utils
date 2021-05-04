@@ -1,4 +1,239 @@
+# Install
+
+## PeerDependencies and dotenv
 ```bash
-npm install --save @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler @nestjs/swagger swagger-ui-express @nestjs/websockets @nestjs/platform-socket.io
-npm i -D @types/sequelize @types/multer @types/socket.io
+npm install --save @nestjs/common @nestjs/core @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata dotenv
 ```
+
+## main.ts
+```ts
+// First line of main.ts
+import 'src/app/config';
+import { config } from '@monokai-kirov/nestjs-crud-utils';
+```
+
+## src/app/config.ts
+```ts
+require('dotenv').config();
+import { config } from '@monokai-kirov/nestjs-crud-utils';
+```
+
+## src/app/app.module.ts
+```ts
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+
+@Module({
+	imports: [
+		UploadModule.register([
+			SequelizeModule.forFeature([
+				Upload,
+			]),
+		]),
+	],
+})
+export class AppModule {}
+```
+
+
+# Crud example
+## src/admin/models/category.model.ts
+```ts
+import { Column, Model, Table, DataType } from 'sequelize-typescript';
+import { primaryKeyOptions, Upload } from '@monokai-kirov/nestjs-crud-utils';
+
+@Table
+export class Category extends Model {
+	@Column(primaryKeyOptions)
+	id: string;
+
+	@Column({ allowNull: false })
+	title: string;
+
+	@Column({ type: DataType.TEXT, allowNull: false })
+	description: string;
+
+	@ForeignKey(() => Upload)
+	@Column({ type: DataType.UUID, allowNull: true })
+	image: string|null;
+
+	@BelongsTo(() => Upload, { foreignKey: 'image_id', onDelete: 'SET NULL' })
+	image: Upload|null;
+}
+```
+
+## src/admin/models/category.dto.ts
+```ts
+import { StringDecorator, OptionalTextDecorator, UploadDecorator, UploadType } from "@monokai-kirov/nestjs-crud-utils";
+
+export class CategoryDto {
+	@StringDecorator()
+	title: string;
+
+	@OptionalTextDecorator()
+	description: string|null = null;
+
+	@UploadDecorator({ type: UploadType.PICTURE, width: 500 })
+	image: string|null = null;
+}
+```
+
+## src/admin/services/category.service.ts
+```ts
+import { CrudService, Upload, UploadService } from "@monokai-kirov/nestjs-crud-utils";
+import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/sequelize";
+import { CategoryDto } from "../dto/category.dto";
+import { Category } from "../models/category.model";
+
+@Injectable()
+export class CategoryService extends CrudService<Category> {
+	constructor(
+		@InjectModel(Category)
+		private model: typeof Category,
+		private readonly uploadService: UploadService,
+	) {
+		super(model, CategoryDto, uploadService);
+	}
+
+	// by default getIncludeOptions in CrudService returns { all: true }
+	protected getIncludeOptions() {
+		return [
+			Upload,
+		];
+	}
+```
+
+## src/admin/controllers/category.controller.ts
+```ts
+import { Controller, UseGuards } from "@nestjs/common";
+import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
+import { JwtAuthGuard } from "src/auth/guards/jwt.auth.guard";
+import { ApiResponseDecorator } from "@monokai-kirov/nestjs-crud-utils";
+import { RolesDecorator } from "@monokai-kirov/nestjs-crud-utils";
+import { UserRole } from "src/user/models/user.model";
+import { CategoryDto } from "../dto/category.dto";
+import { CategoryService } from "../services/category.service";
+import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
+
+@ApiTags('Admin categories')
+@ApiExtraModels(CategoryDto)
+@ApiResponseDecorator([401, 403])
+// @RolesDecorator(UserRole.ADMIN)
+// @UseGuards(JwtAuthGuard)
+@Controller('api/admin/categories')
+export class CategoryController extends CrudController {
+	constructor(
+		private readonly categoryService: CategoryService,
+	) {
+		super(categoryService);
+	}
+}
+```
+
+## src/admin/admin.module.ts
+```ts
+import { Category } from './models/category.model';
+import { CategoryLogo } from './models/category.logo.model';
+import { CategoryService } from './services/category.service';
+import { CategoryController } from './controllers/category.controller';
+
+@Module({
+	imports: [
+		SequelizeModule.forFeature([
+			Category,
+		]),
+	],
+	controllers: [
+		CategoryController,
+	],
+	providers: [
+		CategoryService,
+	],
+})
+export class AdminModule {}
+```
+
+# Decorators list
+```ts
+@StringDecorator()
+@OptionalStringDecorator()
+@TextDecorator()
+@OptionalTextDecorator()
+
+@BooleanDecorator()
+@OptionalBooleanDecorator()
+
+@IntDecorator()
+@OptionalIntDecorator()
+@OptionalIntWithoutNullDecorator()
+@DecimalDecorator()
+@OptionalDecimalDecorator()
+@OptionalDecimalWithoutNullDecorator()
+
+@DateDecorator()
+@OptionalDateDecorator()
+
+@IsInDecorator()
+@OptionalIsInDecorator()
+
+@UUIDDecorator()
+@OptionalUUIDDecorator()
+@JsonDecorator()
+@OptionalJsonDecorator()
+@ObjectDecorator()
+@OptionalObjectDecorator()
+@ArrayOfUUIDsDecorator()
+@OptionalArrayOfUUIDsDecorator()
+@ArrayOfJSONsDecorator()
+@OptionalArrayOfJSONsDecorator()
+@ArrayOfObjectsDecorator()
+@OptionalArrayOfObjectsDecorator()
+
+@EmailDecorator()
+@OptionalEmailDecorator()
+@PhoneDecorator()
+@OptionalPhoneDecorator()
+
+@UploadDecorator()
+@MultipleUploadDecorator()
+
+@AdvancedJSONMultipleRelationDecorator()
+@AdvancedObjectMultipleRelationDecorator()
+
+@ApiJwtHeaderDecorator()
+@ApiResponseDecorator()
+@RolesDecorator()
+@UnnecessaryDecorator()
+```
+
+# Guards
+```ts
+GatewayThrottlerGuard
+MutexGuard
+WsMutexGuard
+```
+
+# Pipes
+```ts
+NormalizeBeforeValidationPipe
+NormalizeAfterValidationPipe
+OptionalBooleanQueryValidationPipe
+ValidatePagePipe
+```
+
+# Interceptors
+```ts
+ReleaseMutexInterceptor
+ReleaseWsMutexInterceptor
+TransactionInterceptor
+```
+
+# Filters
+```ts
+AllExceptionsFilter
+AllWsExceptionsFilter
+```
+
+# CryptoModule, EmailModule, SmsModule and UploadModule
+#TODO: examples
