@@ -19,23 +19,6 @@ export class Config {
 		return process.env.CORS_ORIGIN;
 	}
 
-	public getSentryOptions(redefined = {}) {
-		return {
-			dsn: process.env.SENTRY_DSN,
-			tracesSampleRate: 1.0,
-			...redefined,
-		};
-	}
-
-	public getThrottlerOptions(redefined = {}) {
-		return {
-			ttl: 60,
-			limit: 10,
-			storage: new ThrottlerStorageRedisService(this.getRedisClient()),
-			...redefined,
-		};
-	}
-
 	public getDatabaseOptions(redefined = {}) {
 		return ({
 			dialect: 'postgres',
@@ -87,6 +70,38 @@ export class Config {
 		};
 	}
 
+	public getWsOptions(redefined = {}) {
+		return {
+			transports: ['websocket'],
+			origins: process.env.WS_ORIGIN ?? '*:*',
+			path: '/ws',
+			serveClient: false,
+			allowUpgrades: false,
+			...redefined,
+		};
+	}
+
+	public getWsPort() {
+		return process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3030;
+	}
+
+	public getThrottlerOptions(redefined = {}) {
+		return {
+			ttl: 60,
+			limit: 10,
+			storage: new ThrottlerStorageRedisService(this.getRedisClient()),
+			...redefined,
+		};
+	}
+
+	public getSentryOptions(redefined = {}) {
+		return {
+			dsn: process.env.SENTRY_DSN,
+			tracesSampleRate: 1.0,
+			...redefined,
+		};
+	}
+
 	public getUploadOptions(redefined = {}) {
 		return {
 			imageWidth: 1000,
@@ -117,21 +132,6 @@ export class Config {
 			SUMMARY_SIZE_LIMIT: 100_000_000, // 100 Mb
 			...redefined,
 		};
-	}
-
-	public getWsOptions(redefined = {}) {
-		return {
-			transports: ['websocket'],
-			origins: process.env.WS_ORIGIN ?? '*:*',
-			path: '/ws',
-			serveClient: false,
-			allowUpgrades: false,
-			...redefined,
-		};
-	}
-
-	public getWsPort() {
-		return process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3030;
 	}
 }
 
