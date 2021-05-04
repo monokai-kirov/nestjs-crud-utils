@@ -50,8 +50,8 @@ export class Category extends Model {
 	@Column({ allowNull: false })
 	title: string;
 
-	@Column({ type: DataType.TEXT, allowNull: false })
-	description: string;
+	@Column({ type: DataType.TEXT, allowNull: true })
+	description: string|null;
 
 	@ForeignKey(() => Upload)
 	@Column({ type: DataType.UUID, allowNull: true })
@@ -96,7 +96,7 @@ export class CategoryService extends CrudService<Category> {
 		super(model, CategoryDto, uploadService);
 	}
 
-	// by default getIncludeOptions in CrudService returns { all: true }
+	// By default getIncludeOptions in CrudService returns { all: true }
 	protected getIncludeOptions() {
 		return [
 			Upload,
@@ -108,10 +108,7 @@ export class CategoryService extends CrudService<Category> {
 ```ts
 import { Controller, UseGuards } from "@nestjs/common";
 import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "src/auth/guards/jwt.auth.guard";
 import { ApiResponseDecorator } from "@monokai-kirov/nestjs-crud-utils";
-import { RolesDecorator } from "@monokai-kirov/nestjs-crud-utils";
-import { UserRole } from "src/user/models/user.model";
 import { CategoryDto } from "../dto/category.dto";
 import { CategoryService } from "../services/category.service";
 import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
