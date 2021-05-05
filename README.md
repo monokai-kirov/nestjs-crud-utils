@@ -222,7 +222,6 @@ export class AdminModule {}
 @ApiJwtHeaderDecorator()
 @ApiResponseDecorator()
 @RolesDecorator()
-@UnnecessaryDecorator()
 ```
 
 # Guards
