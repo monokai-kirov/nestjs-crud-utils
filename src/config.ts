@@ -85,7 +85,7 @@ export class Config {
 	public getThrottlerOptions() {
 		return {
 			ttl: 60,
-			limit: 10,
+			limit: 20,
 			storage: new ThrottlerStorageRedisService(this.getRedisClient()),
 		};
 	}
