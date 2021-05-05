@@ -8,7 +8,7 @@
 
 ## PeerDependencies
 ```bash
-npm install --save @nestjs/common @nestjs/core dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata
+npm install --save @nestjs/common @nestjs/core dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler ioredis @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata
 ```
 
 ## Dependencies clarifying
@@ -32,8 +32,9 @@ pg
 // file upload
 @nestjs/platform-express
 
-// rate-limit
+// rate-limit and mutex
 @nestjs/throttler
+ioredis
 
 // open api
 @nestjs/swagger
@@ -54,23 +55,6 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```ts
 require('dotenv').config();
 import { config } from '@monokai-kirov/nestjs-crud-utils';
-```
-
-## src/app/app.module.ts
-```ts
-import { SequelizeModule } from '@nestjs/sequelize';
-import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
-
-@Module({
-	imports: [
-		UploadModule.register([
-			SequelizeModule.forFeature([
-				Upload,
-			]),
-		]),
-	],
-})
-export class AppModule {}
 ```
 
 
@@ -269,5 +253,40 @@ AllExceptionsFilter
 AllWsExceptionsFilter
 ```
 
-# CryptoModule, EmailModule, SmsModule and UploadModule
+# UploadModule
+## src/app/app.module.ts
+```ts
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+
+@Module({
+	imports: [
+		UploadModule.register([
+			SequelizeModule.forFeature([
+				Upload,
+			]),
+		]),
+	],
+})
+export class AppModule {}
+```
+
+# SmsModule
+## src/app/app.module.ts
+```ts
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+
+@Module({
+	imports: [
+		SmsModule.register([
+			SequelizeModule.forFeature([
+				SmsRequest,
+			]),
+		]),
+	],
+})
+export class AppModule {}
+```
+
 #TODO: examples
