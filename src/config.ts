@@ -19,7 +19,7 @@ export class Config {
 		return process.env.CORS_ORIGIN;
 	}
 
-	public getDatabaseOptions(redefined = {}) {
+	public getDatabaseOptions() {
 		return ({
 			dialect: 'postgres',
 			host: process.env.DB_HOST,
@@ -41,7 +41,6 @@ export class Config {
 				underscored: true,
 				defaultScope: defaultScopeOptions,
 			},
-			...redefined,
 		} as unknown) as SequelizeOptions;
 	}
 
@@ -52,32 +51,29 @@ export class Config {
 		return this.redisClient;
 	}
 
-	public getRedisOptions(redefined = {}) {
+	public getRedisOptions() {
 		return {
 			host: process.env.REDIS_HOST,
 			port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
-			...redefined,
 		};
 	}
 
-	public getCacheOptions(redefined = {}) {
+	public getCacheOptions() {
 		return {
 			store: redisStore,
 			...(this.getRedisOptions()),
 			ttl: 60,
 			max: 200,
-			...redefined,
 		};
 	}
 
-	public getWsOptions(redefined = {}) {
+	public getWsOptions() {
 		return {
 			transports: ['websocket'],
 			origins: process.env.WS_ORIGIN ?? '*:*',
 			path: '/ws',
 			serveClient: false,
 			allowUpgrades: false,
-			...redefined,
 		};
 	}
 
@@ -85,24 +81,22 @@ export class Config {
 		return process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3030;
 	}
 
-	public getThrottlerOptions(redefined = {}) {
+	public getThrottlerOptions() {
 		return {
 			ttl: 60,
 			limit: 10,
 			storage: new ThrottlerStorageRedisService(this.getRedisClient()),
-			...redefined,
 		};
 	}
 
-	public getSentryOptions(redefined = {}) {
+	public getSentryOptions() {
 		return {
 			dsn: process.env.SENTRY_DSN,
 			tracesSampleRate: 1.0,
-			...redefined,
 		};
 	}
 
-	public getUploadOptions(redefined = {}) {
+	public getUploadOptions() {
 		return {
 			imageWidth: 1000,
 			folders: ['upload'],
@@ -130,7 +124,6 @@ export class Config {
 				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 			],
 			SUMMARY_SIZE_LIMIT: 100_000_000, // 100 Mb
-			...redefined,
 		};
 	}
 }
