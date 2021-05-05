@@ -58,12 +58,13 @@ export class Config {
 		};
 	}
 
-	public getCacheOptions() {
+	public getCacheOptions(redefined = {}) {
 		return {
 			store: redisStore,
 			...(this.getRedisOptions()),
 			ttl: 60,
 			max: 200,
+			...redefined,
 		};
 	}
 
