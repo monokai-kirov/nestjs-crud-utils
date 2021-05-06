@@ -328,17 +328,63 @@ OptionalBooleanQueryValidationPipe
 ValidatePagePipe
 ```
 
+## Normalize example
+```ts
+// in main.ts
+import { ValidationPipe } from '@nestjs/common';
+import { NormalizeBeforeValidationPipe, NormalizeAfterValidationPipe } from '@monokai-kirov/nestjs-crud-utils';
+
+app.useGlobalPipes(
+	new NormalizeBeforeValidationPipe(), // trim whitespaces recursively
+	new ValidationPipe({ transform: true, whitelist: true }),
+	new NormalizeAfterValidationPipe(), // for email|phone normalization
+);
+```
+
 # Interceptors
 ```ts
 ReleaseMutexInterceptor
 ReleaseWsMutexInterceptor
-TransactionInterceptor
+TransactionInterceptor (description below)
+```
+
+## Transactions and websocket gateway example
+```bash
+npm install cls-hooked
+```
+
+```ts
+// in main.ts
+import { createNamespace } from "cls-hooked";
+import { Sequelize } from "sequelize-typescript"
+const namespace = createNamespace('sequelize-cls-namespace');
+(Sequelize as any).__proto__.useCLS(namespace);
+
+// in bootstrap function() for http context
+const { httpAdapter } = app.get(HttpAdapterHost);
+app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+```
+
+```ts
+// Websocket gateway example (fix ws errors and catch postgresql 400001 throwed by SERIALIZABLE isolation level if TransactionInterceptor is used)
+import {
+	GatewayThrottlerGuard,
+	AllWsExceptionsFilter
+	config,
+} from '@monokai-kirov/nestjs-crud-utils';
+import { UseGuards, UsePipes, UseFilters, ValidationPipe } from '@nestjs/common';
+
+@UseGuards(GatewayThrottlerGuard) // just example from docs
+@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+@UseFilters(AllWsExceptionsFilter)
+@WebSocketGateway(config.getWsPort(), config.getWsOptions())
+export class EventsGateway {}
 ```
 
 # Filters
 ```ts
-AllExceptionsFilter
-AllWsExceptionsFilter
+AllExceptionsFilter // http context
+AllWsExceptionsFilter // ws context
 ```
 
 # UploadModule
