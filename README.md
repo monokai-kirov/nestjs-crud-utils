@@ -39,7 +39,6 @@ ioredis
 
 // open api
 @nestjs/swagger
-nestjs-swagger-api-implicit-queries-decorator
 
 // websockets
 @nestjs/websockets
