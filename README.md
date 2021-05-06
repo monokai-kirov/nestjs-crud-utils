@@ -242,12 +242,14 @@ export class CategoryController extends CrudController {
 import { Category } from './models/category.model';
 import { CategoryService } from './services/category.service';
 import { CategoryController } from './controllers/category.controller';
+// import { Direction } from './models/direction.model';
 // import { CategoryDirection } from './models/category.direction.model';
 
 @Module({
 	imports: [
 		SequelizeModule.forFeature([
 			Category,
+			// Direction,
 			// CategoryDirection,
 		]),
 	],
@@ -316,8 +318,8 @@ export class AdminModule {}
 # Guards
 ```ts
 GatewayThrottlerGuard
-MutexGuard
-WsMutexGuard
+MutexGuard // TODO: example
+WsMutexGuard // TODO: example
 ```
 
 # Pipes
@@ -335,16 +337,16 @@ import { ValidationPipe } from '@nestjs/common';
 import { NormalizeBeforeValidationPipe, NormalizeAfterValidationPipe } from '@monokai-kirov/nestjs-crud-utils';
 
 app.useGlobalPipes(
-	new NormalizeBeforeValidationPipe(), // trim whitespaces recursively
+	new NormalizeBeforeValidationPipe(), // trim whitespaces recursively, email normalization
 	new ValidationPipe({ transform: true, whitelist: true }),
-	new NormalizeAfterValidationPipe(), // for email|phone normalization
+	new NormalizeAfterValidationPipe(), // phone normalization
 );
 ```
 
 # Interceptors
 ```ts
-ReleaseMutexInterceptor
-ReleaseWsMutexInterceptor
+ReleaseMutexInterceptor // TODO: example
+ReleaseWsMutexInterceptor // TODO: example
 TransactionInterceptor (description below)
 ```
 
@@ -366,7 +368,7 @@ app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 ```
 
 ```ts
-// Websocket gateway example (fix ws errors and catch postgresql 400001 throwed by SERIALIZABLE isolation level if TransactionInterceptor is used)
+// Websocket gateway example (fix ws errors and catch postgresql 40001 throwed by SERIALIZABLE isolation level if TransactionInterceptor is used)
 import {
 	GatewayThrottlerGuard,
 	AllWsExceptionsFilter
@@ -383,8 +385,8 @@ export class EventsGateway {}
 
 # Filters
 ```ts
-AllExceptionsFilter // http context
-AllWsExceptionsFilter // ws context
+AllExceptionsFilter
+AllWsExceptionsFilter
 ```
 
 # UploadModule
@@ -407,6 +409,7 @@ import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
 export class AppModule {}
 ```
 
+## CryptoModule, EmailModule, SmsModule, config, utils, sequelize-options etc.
 # SmsModule
 ## src/app/app.module.ts
 ```ts
