@@ -348,6 +348,11 @@ export class AdminModule {}
 @PhoneDecorator()
 @OptionalPhoneDecorator()
 
+@ForeignKeyDecorator()
+@BelongsToDecorator()
+@UploadForeignKeyDecorator()
+@UploadBelongsToDecorator()
+
 @UploadDecorator()
 @MultipleUploadDecorator()
 
