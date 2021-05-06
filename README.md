@@ -82,8 +82,8 @@ export class AppModule {}
 
 ## src/admin/models/category.model.ts
 ```ts
-import { Column, Model, Table, DataType, ForeignKey, /*BelongsTo, BelongsToMany*/ } from 'sequelize-typescript';
-import { primaryKeyOptions, Upload } from '@monokai-kirov/nestjs-crud-utils';
+import { Column, Model, Table, DataType, /*BelongsToMany*/ } from 'sequelize-typescript';
+import { primaryKeyOptions, Upload, UploadForeignKeyDecorator, UploadBelongsToDecorator, /*ForeignKeyDecorator, BelongsToDecorator*/ } from '@monokai-kirov/nestjs-crud-utils';
 // import { Direction } from 'src/admin/models/direction.model';
 
 @Table({
@@ -102,30 +102,27 @@ export class Category extends Model {
 	@Column({ type: DataType.TEXT, allowNull: true })
 	description: string|null;
 
-	@ForeignKey(() => Upload)
-	@Column({ type: DataType.UUID, allowNull: true })
+	@UploadForeignKeyDecorator(() => Upload)
 	imageId: string|null;
 
-	@BelongsTo(() => Upload, { foreignKey: 'image_id', onDelete: 'SET NULL' })
+	@UploadBelongsToDecorator(() => Upload)
 	image: Upload|null;
 
 	/**
 	 * Single linking example
 	 */
 	// Mandatory
-	// @ForeignKey(() => Direction)
-	// @Column({ type: DataType.UUID, allowNull: false })
+	// @ForeignKeyDecorator(() => Direction)
 	// directionId: string;
 
-	// @BelongsTo(() => Direction, { foreignKey: 'direction_id', onDelete: 'CASCADE' })
+	// @BelongsToDecorator(() => Direction)
 	// direction: Direction;
 
 	// Optional
-	// @ForeignKey(() => Direction)
-	// @Column({ type: DataType.UUID, allowNull: true })
+	// @ForeignKeyDecorator(() => Direction, true)
 	// directionId: string|null;
 
-	// @BelongsTo(() => Direction, { foreignKey: 'direction_id', onDelete: 'CASCADE' /*or 'SET NULL' if you want*/ })
+	// @BelongsToDecorator(() => Direction, /*'SET NULL' if you want (by default onDelete: 'CASCADE')*/)
 	// direction: Direction|null;
 
 	/**
