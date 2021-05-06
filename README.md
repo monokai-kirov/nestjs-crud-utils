@@ -232,6 +232,32 @@ export class CategoryService extends CrudService<Category> {
 	// public async validateCreateRequest(dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	// public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	// public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {}
+
+	// this.correctionService.getCorrectInclude() // addFalseRequiredAttributes if necessary (fix sequelize bugs with subQuery and pagination)
+	// this.correctionService.addCorrectOrder() // add order by entities from the include
+
+	/**
+	 * Default options for CrudService
+	 * export type CrudOptions = {
+	 *	withDtoValidation: true,
+	 *	withRelationValidation: true,
+	 *	withUploadValidation: true,
+	 *	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
+	 *	withActiveUpdate: false,
+	 *	unscoped: true,
+	 *	additionalScopes: ['admin'],
+	 *	childModels: [],
+	 * };
+	 */
+
+	/**
+	 * Default options for EntityService
+	 * {
+	 *	unscoped: false,
+	 *	unscopedInclude: false,
+	 *	additionalScopes: [],
+	 * };
+	 */
 ```
 
 ## src/admin/controllers/category.controller.ts
@@ -338,7 +364,7 @@ export class AdminModule {}
 
 # Guards
 ```ts
-GatewayThrottlerGuard
+GatewayThrottlerGuard // just an example from docs
 MutexGuard // TODO: example
 WsMutexGuard // TODO: example
 ```
@@ -397,7 +423,6 @@ import {
 } from '@monokai-kirov/nestjs-crud-utils';
 import { UseGuards, UsePipes, UseFilters, ValidationPipe } from '@nestjs/common';
 
-@UseGuards(GatewayThrottlerGuard) // just example from docs
 @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
 @UseFilters(AllWsExceptionsFilter)
 @WebSocketGateway(config.getWsPort(), config.getWsOptions())
@@ -410,23 +435,6 @@ AllExceptionsFilter
 AllWsExceptionsFilter
 ```
 
-## CryptoModule, EmailModule, SmsModule, config, utils, sequelize-options etc.
-# SmsModule
-## src/app/app.module.ts
-```ts
-import { SequelizeModule } from '@nestjs/sequelize';
-import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
-
-@Module({
-	imports: [
-		SmsModule.register([
-			SequelizeModule.forFeature([
-				SmsRequest,
-			]),
-		]),
-	],
-})
-export class AppModule {}
-```
+## CryptoModule, EmailModule, config, utils, sequelize-options etc.
 
 #TODO: examples
