@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { BelongsTo } from 'sequelize-typescript';
-import { utils } from 'src/utils';
+import { utils } from '../utils';
 
 export function BelongsToDecorator(modelFunc: () => Object, onDelete: string = 'CASCADE') {
 	return function(target, propertyKey, descriptor?) {

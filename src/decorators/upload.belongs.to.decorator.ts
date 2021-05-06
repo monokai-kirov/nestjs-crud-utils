@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { BelongsTo } from 'sequelize-typescript';
-import { utils } from 'src/utils';
+import { utils } from '../utils';
 
 export function UploadBelongsToDecorator(modelFunc: () => Object) {
 	return function(target, propertyKey, descriptor?) {

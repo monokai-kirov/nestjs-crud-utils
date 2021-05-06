@@ -1,7 +1,7 @@
 {
   "name": "@monokai-kirov/nestjs-crud-utils",
   "author": "Monokai Kirov",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Nestjs sequelize-crud; Upload; removing triggers for Upload; collection of decorators; base guards, pipes, interceptors, filters; EmailService, SmsService; config, utils, sequelize-options;",
   "license": "MIT",
   "homepage": "https://github.com/monokai-kirov/nestjs-crud-utils#readme",
