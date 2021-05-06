@@ -58,7 +58,28 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```
 
 
-# Crud example
+# Crud example (please import UploadModule for this example)
+
+## UploadModule
+
+By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+## src/app/app.module.ts
+```ts
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+
+@Module({
+	imports: [
+		UploadModule.register([
+			SequelizeModule.forFeature([
+				Upload,
+			]),
+		]),
+	],
+})
+export class AppModule {}
+```
+
 ## src/admin/models/category.model.ts
 ```ts
 import { Column, Model, Table, DataType, ForeignKey, /*BelongsTo, BelongsToMany*/ } from 'sequelize-typescript';
@@ -387,26 +408,6 @@ export class EventsGateway {}
 ```ts
 AllExceptionsFilter
 AllWsExceptionsFilter
-```
-
-# UploadModule
-
-By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
-## src/app/app.module.ts
-```ts
-import { SequelizeModule } from '@nestjs/sequelize';
-import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
-
-@Module({
-	imports: [
-		UploadModule.register([
-			SequelizeModule.forFeature([
-				Upload,
-			]),
-		]),
-	],
-})
-export class AppModule {}
 ```
 
 ## CryptoModule, EmailModule, SmsModule, config, utils, sequelize-options etc.
