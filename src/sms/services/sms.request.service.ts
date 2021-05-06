@@ -15,7 +15,7 @@ export interface SmsResponse {
 @Injectable()
 export class SmsRequestService extends EntityService<SmsRequest> {
 	static MAX_REQUESTS = 5;
-	static MAX_REQUESTS_DESCRIPTION = `Максимальное количество запросов code по смс - ${SmsRequestService.MAX_REQUESTS} в сутки (т.к. каждая отправка стоит денег, то стоит ограничивать пользователей в количестве отправок кода по смс)`;
+	static MAX_REQUESTS_DESCRIPTION = `Maximum requests per day - ${SmsRequestService.MAX_REQUESTS}`;
 
 	constructor(
 		@InjectModel(SmsRequest)

@@ -185,7 +185,7 @@ export class CrudValidationService<T> {
 			const relationsIds = relations.map(link => link.id);
 
 			if (relationsIds.length) {
-				throw new ConflictException(`Невозможно удалить ${context.entityName}. Есть связанные с этой сущностью ${relationName}: ${relationsIds.join(', ')}`);
+				throw new ConflictException(`Can't remove ${context.entityName}. There are some links existing ${relationName}: ${relationsIds.join(', ')}`);
 			}
 		}
 	}

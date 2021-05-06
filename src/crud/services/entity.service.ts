@@ -392,7 +392,7 @@ export class EntityService<T> {
 
 		const associationWithSameTableName = associations.find(v => v.getTableName() === childModel.getTableName());
 		if (!associations.includes(childModel) && !associationWithSameTableName) {
-			throw new Error(`Проверьте метод getIncludeOptions() у модели ${this.entityName}, линковки ${this.getEntityNameByModel(parent)} с ${this.getEntityNameByModel(childModel)} не существует`);
+			throw new Error(`Please check method getIncludeOptions() on model ${this.entityName}, link ${this.getEntityNameByModel(parent)} with ${this.getEntityNameByModel(childModel)} doesn't exist`);
 		}
 
 		if (child.include) {

@@ -448,7 +448,7 @@ export class CrudService<T> extends EntityService<T> {
 		const associations = Object.keys(this.__crudModel__.associations);
 		this.getConflictRelations().forEach(relation => {
 			if (!associations.includes(relation)) {
-				throw new Error(`Проверьте метод getConflictRelations() у модели ${this.entityName}, линковки ${relation} не существует`);
+				throw new Error(`Please check method getConflictRelations() on model ${this.entityName}, link ${relation} doesn't exist`);
 			}
 		});
 	}

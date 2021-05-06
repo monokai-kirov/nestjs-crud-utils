@@ -45,21 +45,21 @@ export class UploadValidationService {
 		if (handledWaitingForLinkingIds.length) {
 			waitingForLinkingEntities = await this.uploadModel.findAll({ where: { id: { [Op.in]: handledWaitingForLinkingIds }, status: UploadStatus.WAIT_FOR_LINKING }});
 			if (handledWaitingForLinkingIds.length !== waitingForLinkingEntities.length) {
-				throw new BadRequestException('Некорректные id файлов');
+				throw new BadRequestException('Incorrect files ids');
 			}
 		}
 
 		const count = (handledRemainingFilesIds.length + waitingForLinkingEntities.length + filesToValidate.length);
 		if (count < minCount) {
-			throw new ForbiddenException(`Минимальное количество файлов ${propName} - ${minCount}`);
+			throw new ForbiddenException(`Min files for ${propName} - ${minCount}`);
 		}
 		if (count > maxCount) {
-			throw new ForbiddenException(`Превышено максимальное количество ${propName} - ${maxCount}`);
+			throw new ForbiddenException(`Max files limit exceeded ${propName} - ${maxCount}`);
 		}
 
 		const summarySize = filesToValidate.reduce((acc, file) => acc + file.size, 0);
 		if (summarySize > config.getUploadOptions().SUMMARY_SIZE_LIMIT)  {
-			throw new ForbiddenException(`Превышен суммарный размер файлов ${config.getUploadOptions().SUMMARY_SIZE_LIMIT / 1_000_000} Mb`);
+			throw new ForbiddenException(`Max size limit exceeded ${config.getUploadOptions().SUMMARY_SIZE_LIMIT / 1_000_000} Mb`);
 		}
 	}
 
@@ -73,7 +73,7 @@ export class UploadValidationService {
 
 		files.map(file => {
 			if (!allowedFormats.includes(file.mimetype)) {
-				throw new BadRequestException(`Некорректный формат файла. Разрешенные форматы: ${allowedFormats.join(', ')}`);
+				throw new BadRequestException(`Incorrect file format. Available formats: ${allowedFormats.join(', ')}`);
 			}
 		});
 	}
