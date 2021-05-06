@@ -9,7 +9,7 @@
 
 ## PeerDependencies
 ```bash
-npm install --save @nestjs/common @nestjs/core dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler ioredis @nestjs/swagger nestjs-swagger-api-implicit-queries-decorator @nestjs/websockets rxjs reflect-metadata
+npm install --save @nestjs/common @nestjs/core rxjs reflect-metadata dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler ioredis @nestjs/swagger @nestjs/websockets
 ```
 
 ## Dependencies clarifying
@@ -61,7 +61,7 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 # Crud example
 ## src/admin/models/category.model.ts
 ```ts
-import { Column, Model, Table, DataType } from 'sequelize-typescript';
+import { Column, Model, Table, DataType, ForeignKey } from 'sequelize-typescript';
 import { primaryKeyOptions, Upload } from '@monokai-kirov/nestjs-crud-utils';
 
 @Table
@@ -137,7 +137,7 @@ import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
 
 @ApiTags('Admin categories')
 @ApiExtraModels(CategoryDto)
-@ApiResponseDecorator([401, 403])
+// @ApiResponseDecorator([401, 403])
 // @RolesDecorator(UserRole.ADMIN)
 // @UseGuards(JwtAuthGuard)
 @Controller('api/admin/categories')
