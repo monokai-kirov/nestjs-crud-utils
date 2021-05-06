@@ -193,19 +193,13 @@ export class CategoryService extends CrudService<Category> {
 		super(model, CategoryDto, uploadService);
 	}
 
-	// By default getIncludeOptions in CrudService returns { all: true }
-	protected getIncludeOptions() {
-		return [
-			Upload,
-		];
-	}
-
 	/**
-	 * Inherited from CrudService
+	 * Inherited from CrudService and EntityService
 	 */
 	// public getDtoType(dto) { return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor; }
 	// protected async fillDto(id: string|null, dto): Promise<Object> { return dto; }
 	// protected getIncludeOptions(): { all: boolean } | Object[] { return { all: true }; }
+	// protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> { return ['id', 'title']; }
 	// public getConflictRelations(): string[] {
 		// return Object.entries((this.__crudModel__).associations)
 			// .filter(([key, value]: any) =>
