@@ -2,6 +2,7 @@
 ```ts
 -- postgresql
 -- redis
+-- Sequelize
 ```
 
 # Install
