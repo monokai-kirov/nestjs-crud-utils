@@ -2,7 +2,7 @@
 ```ts
 -- postgresql
 -- redis
--- Sequelize
+-- sequelize
 ```
 
 # Install
@@ -78,7 +78,7 @@ export class Category extends Model {
 
 	@ForeignKey(() => Upload)
 	@Column({ type: DataType.UUID, allowNull: true })
-	image: string|null;
+	imageId: string|null;
 
 	@BelongsTo(() => Upload, { foreignKey: 'image_id', onDelete: 'SET NULL' })
 	image: Upload|null;
@@ -254,6 +254,8 @@ AllWsExceptionsFilter
 ```
 
 # UploadModule
+
+By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
 ## src/app/app.module.ts
 ```ts
 import { SequelizeModule } from '@nestjs/sequelize';
