@@ -61,10 +61,16 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 # Crud example
 ## src/admin/models/category.model.ts
 ```ts
-import { Column, Model, Table, DataType, ForeignKey } from 'sequelize-typescript';
+import { Column, Model, Table, DataType, ForeignKey, /*BelongsTo, BelongsToMany*/ } from 'sequelize-typescript';
 import { primaryKeyOptions, Upload } from '@monokai-kirov/nestjs-crud-utils';
+// import { Direction } from 'src/admin/models/direction.model';
 
-@Table
+@Table({
+	indexes: [
+		{ fields: ['image_id']},
+		// { fields: ['direction_id']},
+	],
+})
 export class Category extends Model {
 	@Column(primaryKeyOptions)
 	id: string;
@@ -81,12 +87,59 @@ export class Category extends Model {
 
 	@BelongsTo(() => Upload, { foreignKey: 'image_id', onDelete: 'SET NULL' })
 	image: Upload|null;
+
+	/**
+	 * Single linking example
+	 */
+	// Mandatory
+	// @ForeignKey(() => Direction)
+	// @Column({ type: DataType.UUID, allowNull: false })
+	// directionId: string;
+
+	// @BelongsTo(() => Direction, { foreignKey: 'direction_id', onDelete: 'CASCADE' })
+	// direction: Direction;
+
+	// Optional
+	// @ForeignKey(() => Direction)
+	// @Column({ type: DataType.UUID, allowNull: true })
+	// directionId: string|null;
+
+	// @BelongsTo(() => Direction, { foreignKey: 'direction_id', onDelete: 'CASCADE' /*or 'SET NULL' if you want*/ })
+	// direction: Direction|null;
+
+	/**
+	 * Multiple linking example
+	 */
+	// @BelongsToMany(() => Direction, () => CategoryDirection)
+	// directions: Direction[];
 }
+```
+
+## src/admin/models/category.direction.model.ts
+```ts
+// import { DateType, Model, Column, ForeignKey, Table } from "sequelize-typescript";
+// import { Category } from "src/admin/models/category.model";
+// import { Direction } from "src/admin/models/direction.model";
+
+// @Table({
+	// indexes: [
+		// { fields: ['category_id', 'direction_id']},
+	// ],
+// })
+// export class CategoryDirection extends Model {
+	// @ForeignKey(() => Category)
+	// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+	// categoryId: string;
+
+	// @ForeignKey(() => Direction)
+	// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+	// directionId: string;
+// }
 ```
 
 ## src/admin/models/category.dto.ts
 ```ts
-import { StringDecorator, OptionalTextDecorator, UploadDecorator, UploadType } from "@monokai-kirov/nestjs-crud-utils";
+import { StringDecorator, OptionalTextDecorator, UploadDecorator, UploadType, UUIDDecorator, ArrayOfUUIDsDecorator, OptionalArrayOfUUIDsDecorator } from "@monokai-kirov/nestjs-crud-utils";
 
 export class CategoryDto {
 	@StringDecorator()
@@ -97,6 +150,28 @@ export class CategoryDto {
 
 	@UploadDecorator({ type: UploadType.PICTURE, width: 500 })
 	image: string|null = null;
+
+	/**
+	 * Single linking example
+	 */
+	// Mandatory
+	// @UUIDDecorator()
+	// direction: string;
+
+	// Optional
+	// @OptionalUUIDDecorator()
+	// direction: string|null = null;
+
+	/**
+	 * Multiple linking example
+	 */
+	// Mandatory
+	// @ArrayOfUUIDsDecorator()
+	// directions: string[];
+
+	// Optional
+	// @OptionalArrayOfUUIDsDecorator()
+	// directions: string[] = [];
 }
 ```
 
@@ -124,6 +199,24 @@ export class CategoryService extends CrudService<Category> {
 			Upload,
 		];
 	}
+
+	/**
+	 * Inherited from CrudService
+	 */
+	// public getDtoType(dto) { return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor; }
+	// protected async fillDto(id: string|null, dto): Promise<Object> { return dto; }
+	// protected getIncludeOptions(): { all: boolean } | Object[] { return { all: true }; }
+	// public getConflictRelations(): string[] {
+		// return Object.entries((this.__crudModel__).associations)
+			// .filter(([key, value]: any) =>
+				// ['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType)
+				// && value.target.prototype.constructor !== Upload)
+			// .map(([key, value]: any) => key);
+	// };
+	// public async validateRequest(id: string|null, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
+	// public async validateCreateRequest(dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
+	// public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
+	// public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {}
 ```
 
 ## src/admin/controllers/category.controller.ts
@@ -155,11 +248,13 @@ export class CategoryController extends CrudController {
 import { Category } from './models/category.model';
 import { CategoryService } from './services/category.service';
 import { CategoryController } from './controllers/category.controller';
+// import { CategoryDirection } from './models/category.direction.model';
 
 @Module({
 	imports: [
 		SequelizeModule.forFeature([
 			Category,
+			// CategoryDirection,
 		]),
 	],
 	controllers: [
