@@ -57,6 +57,21 @@ require('dotenv').config();
 import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```
 
+### src/app/app.module.ts
+```ts
+import { config } from '@monokai-kirov/nestjs-crud-utils';
+
+
+@Module({
+	imports: [
+		SequelizeModule.forRootAsync({
+			useFactory: () => config.getDatabaseOptions() as any, // define defaultScope and underscored: true (you can use your own options but underscored: true is necessary)
+		}),
+	]
+})
+export class AppModule {}
+```
+
 
 # Crud example (please import UploadModule for this example)
 
