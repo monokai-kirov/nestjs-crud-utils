@@ -1,6 +1,6 @@
 import { UploadService } from "../../upload/services/upload.service";
 import { utils } from "../../utils";
-import { EntityService } from "./entity.service";
+import { EntityService, Include } from "./entity.service";
 import { UPLOAD_METADATA_KEY } from "../../decorators/upload.decorator";
 import { Op } from "sequelize";
 import { ADVANCED_MULTIPLE_RELATON_METADATA_KEY } from "../../decorators/advanced.object.multiple.relation.decorator";
@@ -38,7 +38,7 @@ export class CrudService<T> extends EntityService<T> {
 	 */
 	public getDtoType(dto) { return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor; }
 	protected async fillDto(id: string|null, dto): Promise<Object> { return dto; }
-	protected getIncludeOptions(): { all: boolean } | Object[] { return { all: true }; }
+	protected getIncludeOptions(): Include { return { all: true }; }
 	public getConflictRelations(): string[] {
 		return Object.entries((this.__crudModel__).associations)
 			.filter(([key, value]: any) =>
@@ -217,7 +217,7 @@ export class CrudService<T> extends EntityService<T> {
 		return (entity as any).save();
 	}
 
-	protected async updateRelations(entity, dto, files) {
+	protected async updateRelations(entity: T, dto, files) {
 		for (let relation of this.getMultipleRelations()) {
 			await (entity as any)[`set${utils.ucFirst(relation.name)}`](dto[relation.name] ?? []);
 		}
@@ -269,7 +269,7 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	protected async updateAdvancedMultipleRelations(entity, dto) {
+	protected async updateAdvancedMultipleRelations(entity: T, dto) {
 		for (let relation of this.getAdvancedMultipleRelations(dto)) {
 			let input = dto[relation.name];
 
@@ -309,7 +309,7 @@ export class CrudService<T> extends EntityService<T> {
 					.filter(v => !v.id)
 					.map(async (values) => {
 						return association.target.create({
-							[utils.snakeCaseToCamel(association.foreignKey)]: entity.id,
+							[utils.snakeCaseToCamel(association.foreignKey)]: entity['id'],
 							...values,
 						});
 					})
@@ -317,14 +317,14 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	protected async updateUploads(entity, dto, files) {
+	protected async updateUploads(entity: T, dto, files) {
 		const parentUploads = this.getUploads(dto).filter(v => this.getUploadRelations().includes(v.name));
 		await this.updateUploadsHelper(parentUploads, files, dto, entity);
 
 		const childModel = this.getChildModel(dto);
 		if (childModel) {
 			const childEntity = await childModel.findOne({
-				where: { [this.getChildModelKey()]: entity.id },
+				where: { [this.getChildModelKey()]: entity['id'] },
 			});
 
 			const childUploads = this.getUploads(dto).filter(v => this.getUploadRelations(childModel).includes(v.name));
@@ -347,9 +347,9 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	protected async updateActive(entity, dto) {
+	protected async updateActive(entity: T, dto) {
 		const processedManyToMany = [];
-		await this.updateActiveHelper(this.__crudModel__, entity.id, dto, processedManyToMany);
+		await this.updateActiveHelper(this.__crudModel__, entity['id'], dto, processedManyToMany);
 	}
 
 	protected async updateActiveHelper(model, linkedIds: string|string[], dto, processedManyToMany: any[]) {
@@ -428,7 +428,7 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	public async removeById(id: string) {
-		await this.crudModel.destroy({ where: { id }});
+		await this.crudModel.destroy({ where: { id }} as any);
 	}
 
 	public async validateBeforeCreating(dto, files, req) {

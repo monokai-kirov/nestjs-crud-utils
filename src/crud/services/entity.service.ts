@@ -11,16 +11,20 @@ export type EntityOptions = {
 	additionalScopes?: string[],
 }
 
+export type Include = { all: boolean } | Object[];
+
 export class EntityService<T> {
-	public get crudModel() { return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes) }
-	public get entityName() { return this.__crudModel__.prototype.constructor.name; }
-	public get tableName() { return this.__crudModel__.getTableName() };
-	public getEntityNameByModel(model?) { return model ? model.prototype.constructor.name : this.entityName; }
-	public getMaxEntitiesPerPage() { return 30; }
+	public get crudModel(): Model {
+		return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
+	}
+	public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
+	public get tableName() : string { return this.__crudModel__.getTableName() };
+	public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
+	public getMaxEntitiesPerPage() : number { return 30; }
 	/**
 	 * @Override
 	 */
-	protected getIncludeOptions(): any { return []; }
+	protected getIncludeOptions(): Include { return []; }
 	protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> { return ['id', 'title']; }
 
 
@@ -34,7 +38,7 @@ export class EntityService<T> {
 	public readonly correctionService: CorrectionService<T>;
 	public readonly validationService: ValidationService<T>;
 
-	constructor(crudModel, options: EntityOptions = {}) {
+	constructor(crudModel: Object, options: EntityOptions = {}) {
 		this.__crudModel__ = crudModel;
 		this.correctionService = correctionService;
 		this.validationService = validationService as ValidationService<T>;
@@ -67,7 +71,7 @@ export class EntityService<T> {
 	}: {
 		search?: string,
 		where?: Object,
-		include?: Object[],
+		include?: Include,
 		offset?: number,
 		limit?: number,
 		order?: any[],
@@ -161,7 +165,7 @@ export class EntityService<T> {
 			...args
 		}: {
 			where?: Object,
-			include?: Object[],
+			include?: Include,
 			unscoped?: boolean,
 			unscopedInclude?: boolean,
 			additionalScopes?: string[],
@@ -190,7 +194,7 @@ export class EntityService<T> {
 			...args
 		}: {
 			where?: Object,
-			include?: Object[],
+			include?: Include,
 			unscoped?: boolean,
 			unscopedInclude?: boolean,
 			additionalScopes?: string[],
@@ -217,7 +221,7 @@ export class EntityService<T> {
 		...args
 	}: {
 		where?: Object,
-		include?: Object[],
+		include?: Include,
 		order?: any[],
 		unscoped?: boolean,
 		unscopedInclude?: boolean,
@@ -244,7 +248,7 @@ export class EntityService<T> {
 			...args
 		}: {
 			where?: Object,
-			include?: Object[],
+			include?: Include,
 			order?: any[],
 			unscoped?: boolean,
 			unscopedInclude?: boolean,

@@ -1,10 +1,10 @@
 import { isNotEmpty } from "class-validator";
 import { Sequelize } from "sequelize-typescript";
-import { EntityService } from "./entity.service";
+import { EntityService, Include } from "./entity.service";
 import { Op } from 'sequelize';
 
 export class CorrectionService<T> {
-	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: any[], where: Object) {
+	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: Include, where: Object) {
 		if (!include) {
 			return [];
 		}

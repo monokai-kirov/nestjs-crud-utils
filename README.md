@@ -61,7 +61,6 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```ts
 import { config } from '@monokai-kirov/nestjs-crud-utils';
 
-
 @Module({
 	imports: [
 		SequelizeModule.forRootAsync({
