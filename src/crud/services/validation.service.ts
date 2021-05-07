@@ -68,7 +68,7 @@ export class ValidationService<T> {
 			unscoped,
 			additionalScopes,
 			model
-		).findOne({ where: { id, ...where }, include: context.correctionService.getCorrectInclude(context, unscopedInclude, include) });
+		).findOne({ where: { id, ...where }, include: context.correctionService.getCorrectInclude(context, unscopedInclude, include, where) });
 		if (!entity) {
 			throw new BadRequestException(`Incorrect id ${context.getEntityNameByModel(model)}`);
 		}
@@ -131,7 +131,7 @@ export class ValidationService<T> {
 				},
 				...where,
 			},
-			include: context.correctionService.getCorrectInclude(context, unscopedInclude, include),
+			include: context.correctionService.getCorrectInclude(context, unscopedInclude, include, where),
 		});
 
 		if (ids.length !== entitiesCount) {

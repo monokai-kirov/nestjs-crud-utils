@@ -1,7 +1,7 @@
 {
   "name": "@monokai-kirov/nestjs-crud-utils",
   "author": "Monokai Kirov",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Nestjs sequelize-crud; Upload; removing triggers for Upload; collection of decorators; base guards, pipes, interceptors, filters; EmailService, SmsService; config, utils, sequelize-options;",
   "license": "MIT",
   "homepage": "https://github.com/monokai-kirov/nestjs-crud-utils#readme",
@@ -15,6 +15,7 @@
     "dist"
   ],
   "scripts": {
+    "dev": "tsc --watch",
     "build": "tsc",
     "prepare": "tsc"
   },
@@ -58,6 +59,8 @@
   "peerDependencies": {
     "@nestjs/common": "*",
     "@nestjs/core": "*",
+    "reflect-metadata": "*",
+    "rxjs": "*",
     "@nestjs/config": "*",
     "@nestjs/sequelize": "*",
     "sequelize": "*",
@@ -65,10 +68,8 @@
     "pg": "*",
     "@nestjs/platform-express": "*",
     "@nestjs/throttler": "*",
+    "ioredis": "*",
     "@nestjs/swagger": "*",
-    "@nestjs/websockets": "*",
-    "rxjs": "*",
-    "reflect-metadata": "*",
-    "ioredis": "*"
+    "@nestjs/websockets": "*"
   }
 }

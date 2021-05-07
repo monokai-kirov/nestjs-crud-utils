@@ -1,15 +1,18 @@
 import { isNotEmpty } from "class-validator";
 import { Sequelize } from "sequelize-typescript";
 import { EntityService } from "./entity.service";
+import { Op } from 'sequelize';
 
 export class CorrectionService<T> {
-	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: any[], topFunc: Function = (include) => include) {
+	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: any[], where: Object) {
 		if (!include) {
 			return [];
 		}
+
+		const outerWhere = this.getSequelizeOuterWhere(context, where);
 		return unscopedInclude
-			? this.addUnscopedAttributes(context, this.addFalsyRequiredAttributes(context, topFunc(include)))
-			: this.addFalsyRequiredAttributes(context, topFunc(include));
+			? this.addUnscopedAttributes(context, this.addFalsyRequiredAttributes(context, include, outerWhere))
+			: this.addFalsyRequiredAttributes(context, include, outerWhere);
 	}
 
 	public addCorrectOrder(context: EntityService<T>, order: any[] = [], group: any, include, unscoped: boolean, withLeafs = true) {
@@ -35,10 +38,11 @@ export class CorrectionService<T> {
 	/**
 	 * If parent has a child and the child isn't active, the parent anyway will be selected. Otherwise without using this function - won't
 	 */
-	public addFalsyRequiredAttributes(context: EntityService<T>, include) {
+	public addFalsyRequiredAttributes(context: EntityService<T>, include, outerWhere: string[]) {
+		const parent = context.__crudModel__.prototype.constructor;
 		return (include.all === true)
-			? context.getAllAssociations().map(child => this.addFalsyRequiredAttributesHelper(child))
-			: include.map(child => this.addFalsyRequiredAttributesHelper(child));
+			? context.getAllAssociations().map(child => this.addFalsyRequiredAttributesHelper(parent, child, outerWhere))
+			: include.map(child => this.addFalsyRequiredAttributesHelper(parent, child, outerWhere));
 	}
 
 	/**
@@ -63,7 +67,54 @@ export class CorrectionService<T> {
 	/**
 	 * Helpers
 	 */
-	 protected addCorrectOrderHelper(parent: any, child: any, order: any[], levels: any[] = [], withLeafs = true) {
+	protected getSequelizeOuterWhere(context: EntityService<T>, where) {
+		const result = [];
+		if (!where) {
+			return result;
+		}
+
+		Object.keys(where).forEach(key => {
+			if (typeof key === 'string' && key.startsWith('$') && key.endsWith('$')) {
+				result.push(key);
+			}
+		});
+
+		const processChunk = (v) => {
+			let chunk = v;
+			chunk = chunk.split('.')
+				.filter(v => v !== context.entityName)
+				.map(v => v.replace(/'|"/g, ''));
+			chunk.pop();
+			chunk = chunk.join('.');
+			return chunk;
+		};
+
+		Object.getOwnPropertySymbols(where).forEach(keySymbol => {
+			if (String(keySymbol) === String(Op.or) || String(keySymbol) === String(Op.and)) {
+				Object.values(where[keySymbol]).forEach((value: any) => {
+					let chunk = value;
+
+					if (typeof chunk !== 'string') {
+						if (chunk.attribute?.val?.col) {
+							chunk = processChunk(chunk.attribute.val.col);
+							if (chunk) {
+								result.push(chunk);
+							}
+						}
+					} else if (chunk.startsWith('$') && chunk.endsWith('$')) {
+						chunk = processChunk(chunk);
+						if (chunk) {
+							result.push(chunk);
+						}
+					}
+				});
+			}
+		});
+
+		return result;
+	}
+
+	protected addCorrectOrderHelper(parent: any, child: any, order: any[], levels: any[] = [], withLeafs = true) {
 		const childModel = child.model ?? child;
 		const [key, value] = Object.entries(parent.associations).find(([key, value]: any) => value.target === childModel);
 
@@ -92,18 +143,32 @@ export class CorrectionService<T> {
 		}
 	}
 
-	protected addFalsyRequiredAttributesHelper(child: any) {
+	protected addFalsyRequiredAttributesHelper(parent: any, child: any, outerWhere: string[], levels: string[] = []) {
+		const getLinkName = (parent, childModel) => parent?.associations
+			? Object.entries(parent.associations)
+				.filter(([key, value]) => (value as any).target === childModel)
+				.map(([key, value]) => key)
+				.shift()
+			: null;
+
 		if (!child.model) {
+			const linkName = getLinkName(parent, child);
+			const levelChunks = linkName ? [...levels, linkName] : levels;
+
 			return {
 				model: child,
-				required: false,
+				...(outerWhere.includes(levelChunks.join('.')) ? { required: true } : { required: false }),
 			};
 		} else {
 			let ops = {};
+			const linkName = getLinkName(parent, child.model);
+			const levelChunks = linkName ? [...levels, linkName] : levels;
 
 			if (isNotEmpty(child.required)) {
 				ops = { required: child.required };
 			} else if (isNotEmpty(child.where)) {
+				ops = { required: true };
+			} else if (outerWhere.includes(levelChunks.join('.'))) {
 				ops = { required: true };
 			} else {
 				ops = { required: false };
@@ -112,13 +177,15 @@ export class CorrectionService<T> {
 			return {
 				...child,
 				...ops,
-				include: child.include ? child.include.map(subchild => this.addFalsyRequiredAttributesHelper(subchild)) : [],
+				include: child.include
+					? child.include.map(subchild => this.addFalsyRequiredAttributesHelper(child.model, subchild, outerWhere, levelChunks))
+					: [],
 			};
 		}
 	};
 
 	protected addEmptyAttributesHelper(parent: any, child: any) {
-		const getManyToManyAssociations = (prop) => prop.associations
+		const getManyToManyAssociations = (prop) => prop?.associations
 			? Object.entries(prop.associations)
 				.filter(([key, value]) => (value as any).associationType === 'BelongsToMany')
 				.map(([key, value]) => (value as any).target)

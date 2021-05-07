@@ -174,7 +174,7 @@ export class EntityService<T> {
 
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findOne({
 			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
 			...args,
 		});
 	}
@@ -202,7 +202,7 @@ export class EntityService<T> {
 				id,
 				...where,
 			},
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
 			...args,
 		});
 	}
@@ -226,7 +226,7 @@ export class EntityService<T> {
 	} = {}): Promise<T[]> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findAll({
 			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
 			order: this.correctionService.addCorrectOrder(this, order, args.group, include, unscoped),
 			...args,
 		});
@@ -259,7 +259,7 @@ export class EntityService<T> {
 				},
 				...where,
 			},
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
 			order: this.correctionService.addCorrectOrder(this, order, args.group, include, unscoped),
 			...args,
 		});
@@ -282,7 +282,7 @@ export class EntityService<T> {
 	} = {}): Promise<number> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).count({
 			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
 			distinct: true,
 		...args,
 		});
