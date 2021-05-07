@@ -73,21 +73,28 @@ export class CorrectionService<T> {
 			return result;
 		}
 
-		Object.keys(where).forEach(key => {
-			if (typeof key === 'string' && key.startsWith('$') && key.endsWith('$')) {
-				result.push(key);
-			}
-		});
-
 		const processChunk = (v) => {
-			let chunk = v;
-			chunk = chunk.split('.')
-				.filter(v => v !== context.entityName)
+			let chunk = v
+				.replace(/\$/g, '')
+				.split('.')
 				.map(v => v.replace(/'|"/g, ''));
+
+			if (chunk[0] === context.entityName) {
+				chunk.shift();
+			}
 			chunk.pop();
 			chunk = chunk.join('.');
 			return chunk;
 		};
+
+		Object.keys(where).forEach(key => {
+			if (typeof key === 'string' && key.startsWith('$') && key.endsWith('$')) {
+				const chunk = processChunk(key);
+				if (chunk) {
+					result.push(chunk);
+				}
+			}
+		});
 
 		Object.getOwnPropertySymbols(where).forEach(keySymbol => {
 			if (String(keySymbol) === String(Op.or) || String(keySymbol) === String(Op.and)) {
