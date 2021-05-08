@@ -4,15 +4,15 @@ import { EntityService, Include } from "./entity.service";
 import { Op } from 'sequelize';
 
 export class CorrectionService<T> {
-	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: Include, where: Object) {
+	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: Include, where: Object, optimizeInclude: boolean = false) {
 		if (!include) {
 			return [];
 		}
 
 		const outerWhere = this.getSequelizeOuterWhere(context, where);
 		return unscopedInclude
-			? this.addUnscopedAttributes(context, this.addFalsyRequiredAttributes(context, include, outerWhere))
-			: this.addFalsyRequiredAttributes(context, include, outerWhere);
+			? this.addUnscopedAttributes(context, this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude))
+			: this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude);
 	}
 
 	public addCorrectOrder(context: EntityService<T>, order: any[] = [], group: any, include, unscoped: boolean, withLeafs = true) {
@@ -36,13 +36,17 @@ export class CorrectionService<T> {
 	}
 
 	/**
-	 * If parent has a child and the child isn't active, the parent anyway will be selected. Otherwise without using this function - won't
+	 * Fix sequeilize outer where clause
 	 */
-	public addFalsyRequiredAttributes(context: EntityService<T>, include, outerWhere: string[]) {
+	public addCorrectRequiredAttributes(context: EntityService<T>, include, outerWhere: string[], optimizeInclude: boolean = false) {
 		const parent = context.__crudModel__.prototype.constructor;
 		return (include.all === true)
-			? context.getAllAssociations().map(child => this.addFalsyRequiredAttributesHelper(parent, child, outerWhere))
-			: include.map(child => this.addFalsyRequiredAttributesHelper(parent, child, outerWhere));
+			? context.getAllAssociations()
+				.map(child => this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude))
+				.filter(v => v)
+			: include
+				.map(child => this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude))
+				.filter(v => v);
 	}
 
 	/**
@@ -67,10 +71,10 @@ export class CorrectionService<T> {
 	/**
 	 * Helpers
 	 */
-	protected getSequelizeOuterWhere(context: EntityService<T>, where) {
-		const result = [];
+	protected getSequelizeOuterWhere(context: EntityService<T>, where): string[] {
+		const result: Set<string> = new Set();
 		if (!where) {
-			return result;
+			return [];
 		}
 
 		const processChunk = (v) => {
@@ -91,7 +95,7 @@ export class CorrectionService<T> {
 			if (typeof key === 'string' && key.startsWith('$') && key.endsWith('$')) {
 				const chunk = processChunk(key);
 				if (chunk) {
-					result.push(chunk);
+					result.add(chunk);
 				}
 			}
 		});
@@ -105,21 +109,78 @@ export class CorrectionService<T> {
 						if (chunk.attribute?.val?.col) {
 							chunk = processChunk(chunk.attribute.val.col);
 							if (chunk) {
-								result.push(chunk);
+								result.add(chunk);
 							}
-						}
-					} else if (chunk.startsWith('$') && chunk.endsWith('$')) {
-						chunk = processChunk(chunk);
-						if (chunk) {
-							result.push(chunk);
+						} else if (typeof chunk === 'object' && chunk !== null) {
+							const key = Object.keys(chunk)[0];
+							if (key) {
+								const chunk = processChunk(key);
+								if (chunk) {
+									result.add(chunk);
+								}
+							}
 						}
 					}
 				});
 			}
 		});
 
-		return result;
+		return [...result];
 	}
+
+	protected addCorrectRequiredAttributesHelper(parent: any, child: any, outerWhere: string[], levels: string[], optimizeInclude: boolean) {
+		const getLinkName = (parent, childModel) => parent?.associations
+			? Object.entries(parent.associations)
+				.filter(([key, value]) => (value as any).target === childModel)
+				.map(([key, value]) => key)
+				.shift()
+			: null;
+
+		const checkOuterWhere = (outerWhere, levelChunks: string[]) => {
+			const chunk = levelChunks.join('.');
+			return outerWhere.includes(chunk) || outerWhere.some(v => v.startsWith(chunk));
+		};
+
+		if (!child.model) {
+			const linkName = getLinkName(parent, child);
+			const levelChunks = linkName ? [...levels, linkName] : levels;
+
+			if (optimizeInclude && !checkOuterWhere(outerWhere, levelChunks)) {
+				return null;
+			}
+
+			return {
+				model: child,
+				...(checkOuterWhere(outerWhere, levelChunks) ? { required: true } : {}),
+			};
+		} else {
+			let ops: { required?: boolean } = {};
+			const linkName = getLinkName(parent, child.model);
+			const levelChunks = linkName ? [...levels, linkName] : levels;
+
+			if (isNotEmpty(child.required)) {
+				ops = { required: child.required };
+			} else if (isNotEmpty(child.where)) {
+				ops = { required: true };
+			} else if (checkOuterWhere(outerWhere, levelChunks)) {
+				ops = { required: true };
+			}
+
+			if (optimizeInclude && !ops.required) {
+				return null;
+			}
+
+			return {
+				...child,
+				...ops,
+				include: child.include
+					? child.include
+						.map(subchild => this.addCorrectRequiredAttributesHelper(child.model, subchild, outerWhere, levelChunks, optimizeInclude))
+						.filter(v => v)
+					: [],
+			};
+		}
+	};
 
 	protected addCorrectOrderHelper(parent: any, child: any, order: any[], levels: any[] = [], withLeafs = true) {
 		const childModel = child.model ?? child;
@@ -149,47 +210,6 @@ export class CorrectionService<T> {
 			));
 		}
 	}
-
-	protected addFalsyRequiredAttributesHelper(parent: any, child: any, outerWhere: string[], levels: string[] = []) {
-		const getLinkName = (parent, childModel) => parent?.associations
-			? Object.entries(parent.associations)
-				.filter(([key, value]) => (value as any).target === childModel)
-				.map(([key, value]) => key)
-				.shift()
-			: null;
-
-		if (!child.model) {
-			const linkName = getLinkName(parent, child);
-			const levelChunks = linkName ? [...levels, linkName] : levels;
-
-			return {
-				model: child,
-				...(outerWhere.includes(levelChunks.join('.')) ? { required: true } : { required: false }),
-			};
-		} else {
-			let ops = {};
-			const linkName = getLinkName(parent, child.model);
-			const levelChunks = linkName ? [...levels, linkName] : levels;
-
-			if (isNotEmpty(child.required)) {
-				ops = { required: child.required };
-			} else if (isNotEmpty(child.where)) {
-				ops = { required: true };
-			} else if (outerWhere.includes(levelChunks.join('.'))) {
-				ops = { required: true };
-			} else {
-				ops = { required: false };
-			}
-
-			return {
-				...child,
-				...ops,
-				include: child.include
-					? child.include.map(subchild => this.addFalsyRequiredAttributesHelper(child.model, subchild, outerWhere, levelChunks))
-					: [],
-			};
-		}
-	};
 
 	protected addEmptyAttributesHelper(parent: any, child: any) {
 		const getManyToManyAssociations = (prop) => prop?.associations

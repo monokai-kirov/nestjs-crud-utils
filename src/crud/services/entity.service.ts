@@ -21,6 +21,7 @@ export class EntityService<T> {
 	public get tableName() : string { return this.__crudModel__.getTableName() };
 	public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
 	public getMaxEntitiesPerPage() : number { return 30; }
+
 	/**
 	 * @Override
 	 */
@@ -34,14 +35,14 @@ export class EntityService<T> {
 		additionalScopes: [],
 	};
 	public readonly entityOptions: EntityOptions = {};
-	public readonly __crudModel__;
 	public readonly correctionService: CorrectionService<T>;
 	public readonly validationService: ValidationService<T>;
+	public readonly __crudModel__;
 
 	constructor(crudModel: Object, options: EntityOptions = {}) {
-		this.__crudModel__ = crudModel;
 		this.correctionService = correctionService;
 		this.validationService = validationService as ValidationService<T>;
+		this.__crudModel__ = crudModel;
 
 		const entityOptions = { ...EntityService.DEFAULT_ENTITY_OPTIONS, ...options };
 		for (let prop in entityOptions) {
@@ -63,7 +64,6 @@ export class EntityService<T> {
 		offset = 0,
 		limit = this.getMaxEntitiesPerPage(),
 		order = [],
-		countOptions = {},
 		unscoped = this.entityOptions.unscoped,
 		unscopedInclude = this.entityOptions.unscopedInclude,
 		additionalScopes = this.entityOptions.additionalScopes,
@@ -75,7 +75,6 @@ export class EntityService<T> {
 		offset?: number,
 		limit?: number,
 		order?: any[],
-		countOptions?: Object,
 		unscoped?: boolean,
 		unscopedInclude?: boolean,
 		additionalScopes?: string[],
@@ -94,7 +93,7 @@ export class EntityService<T> {
 			this.addSearchToFindOptions(search, findOptions);
 		}
 
-		const totalCount = await this.count({ ...findOptions, include: [], ...countOptions });
+		const totalCount = await this.count(findOptions);
 		const { offset: transformedOffset, limit: transformedLimit } = this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount);
 
 		return {
@@ -278,7 +277,7 @@ export class EntityService<T> {
 		...args
 	}: {
 		where?: Object,
-		include?: Object[],
+		include?: Include,
 		unscoped?: boolean,
 		unscopedInclude?: boolean,
 		additionalScopes?: string[],
@@ -286,7 +285,7 @@ export class EntityService<T> {
 	} = {}): Promise<number> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).count({
 			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where, true),
 			distinct: true,
 		...args,
 		});
