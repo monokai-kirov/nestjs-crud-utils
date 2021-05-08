@@ -409,7 +409,7 @@ export class CrudService<T> extends EntityService<T> {
 								{ [field]: isActive ? trueValue : falsyValue },
 								{
 									where: {
-										[association.foreignKey]: {
+										[utils.snakeCaseToCamel(association.foreignKey)]: {
 											[Op.in]: ids,
 										},
 									},
