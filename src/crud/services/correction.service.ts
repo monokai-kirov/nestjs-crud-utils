@@ -151,7 +151,7 @@ export class CorrectionService<T> {
 
 			return {
 				model: child,
-				...(checkOuterWhere(outerWhere, levelChunks) ? { required: true } : {}),
+				...(checkOuterWhere(outerWhere, levelChunks) ? { required: true } : { required: false }),
 			};
 		} else {
 			let ops: { required?: boolean } = {};
@@ -164,6 +164,8 @@ export class CorrectionService<T> {
 				ops = { required: true };
 			} else if (checkOuterWhere(outerWhere, levelChunks)) {
 				ops = { required: true };
+			} else {
+				ops = { required: false };
 			}
 
 			if (optimizeInclude && !ops.required) {
