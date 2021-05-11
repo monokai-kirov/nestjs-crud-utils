@@ -3,6 +3,7 @@ import { utils } from "../../utils";
 import { EntityService, Include } from "./entity.service";
 import { UPLOAD_METADATA_KEY } from "../../decorators/upload.decorator";
 import { Op } from "sequelize";
+import { Model } from 'sequelize-typescript';
 import { ADVANCED_MULTIPLE_RELATON_METADATA_KEY } from "../../decorators/advanced.object.multiple.relation.decorator";
 import { crudValidationService, CrudValidationService } from './crud.validation.service';
 import { config } from "../../config";
@@ -294,13 +295,17 @@ export class CrudService<T> extends EntityService<T> {
 				input
 					.filter(v => v.id)
 					.map(async (values) => {
-						const entity = existingEntities.find(v => v.id === values.id);
+						let link: Model = existingEntities.find(v => v.id === values.id);
 						for (let [key, value] of Object.entries(values)) {
 							if (key !== 'id') {
-								entity[key] = value;
+								link[key] = value;
 							}
 						}
-						return entity.save();
+						link = await link.save();
+
+						for (let linkRelation of this.getMultipleRelations(association.target)) {
+							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name] ?? []);
+						}
 					})
 			)
 
@@ -308,10 +313,15 @@ export class CrudService<T> extends EntityService<T> {
 				input
 					.filter(v => !v.id)
 					.map(async (values) => {
-						return association.target.create({
+
+						let link: Model = await association.target.create({
 							[utils.snakeCaseToCamel(association.foreignKey)]: entity['id'],
 							...values,
 						});
+
+						for (let linkRelation of this.getMultipleRelations(association.target)) {
+							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name] ?? []);
+						}
 					})
 			);
 		}
