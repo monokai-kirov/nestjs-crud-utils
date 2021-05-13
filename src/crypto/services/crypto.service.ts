@@ -31,7 +31,7 @@ export class CryptoService {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
-	public generateHash(): string {
-		return crypto.randomBytes(40).toString('hex');
+	public generateHash(length: number = 40): string {
+		return crypto.randomBytes(length).toString('hex');
 	}
 }
