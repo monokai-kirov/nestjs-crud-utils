@@ -389,7 +389,7 @@ export class CrudService<T> extends EntityService<T> {
 								return;
 							}
 
-							const entitiesToUpdate = await association.target.findAll({
+							const entitiesToUpdate = await (association.target.unscoped()).findAll({
 								include: [
 									{
 										model: association.source,
@@ -404,7 +404,7 @@ export class CrudService<T> extends EntityService<T> {
 							});
 
 							if (entitiesToUpdate.length) {
-								const [_, updateResult] = await association.target.update(
+								const [_, updateResult] = await (association.target.unscoped()).update(
 									{ [field]: isActive ? trueValue : falsyValue },
 									{ where: { id: { [Op.in]: entitiesToUpdate.map(v => v.id) }},
 										returning: true,
@@ -415,7 +415,7 @@ export class CrudService<T> extends EntityService<T> {
 
 							processedManyToMany.push(association.target);
 						} else {
-							const [_, updateResult] = await association.target.update(
+							const [_, updateResult] = await (association.target.unscoped()).update(
 								{ [field]: isActive ? trueValue : falsyValue },
 								{
 									where: {
