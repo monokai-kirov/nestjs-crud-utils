@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { plainToClass } from "class-transformer";
 import { isEmpty } from "class-validator";
+import { Upload } from "../../upload/models/upload.model";
 import { utils } from "../../utils";
 import { CrudService } from "./crud.service";
 
@@ -177,15 +178,51 @@ export class CrudValidationService<T> {
 	}
 
 	protected async validateConflictRelations(context: CrudService<T>, id: string) {
-		const entity = await context.findOneById(id);
+		const associations = Object.entries(context.__crudModel__.associations)
+			.filter(([key, value]: any) =>
+				['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType)
+				&& value.target.prototype.constructor !== Upload)
+			.map(([key, value]: any) => {
+				return {
+					key,
+					model: value.target,
+					associationType: value.associationType,
+					foreignKey: value.foreignKey,
+				};
+			});
 
 		for (let relationName of context.getConflictRelations()) {
-			let relations = await (entity as any)[`get${utils.ucFirst(relationName)}`]();
-			relations = relations ? (Array.isArray(relations) ? relations : [relations]) : [];
-			const relationsIds = relations.map(link => link.id);
+			const hit = associations.find(v => v.key === relationName);
+			if (!hit) {
+				continue;
+			}
 
-			if (relationsIds.length) {
-				throw new ConflictException(`Can't remove ${context.entityName}. There are some links existing ${relationName}: ${relationsIds.join(', ')}`);
+			if (hit.associationType === 'BelongsToMany') {
+				const entities = await (hit.model.unscoped()).findAll({
+					attributes: ['id'],
+					include: [
+						{
+							model: context.__crudModel__,
+							where: { id },
+							required: true,
+						},
+					],
+				});
+
+				if (entities?.length) {
+					throw new ConflictException(`Can't remove ${context.entityName}. There are some links existing ${relationName}: ${entities.map(v => v.id).join(', ')}`);
+				}
+			} else {
+				const entities = await (hit.model.unscoped()).findAll({
+					attributes: ['id'],
+					where: {
+						[utils.snakeCaseToCamel(hit.foreignKey)]: id,
+					},
+				});
+
+				if (entities?.length) {
+					throw new ConflictException(`Can't remove ${context.entityName}. There are some links existing ${relationName}: ${entities.map(v => v.id).join(', ')}`);
+				}
 			}
 		}
 	}

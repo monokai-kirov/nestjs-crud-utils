@@ -51,14 +51,7 @@ export class ValidationService<T> {
 		}
 	}
 
-	protected async validateIdHelper(context: EntityService<T>, id: string, {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = context.entityOptions.unscoped,
-		unscopedInclude = context.entityOptions.unscopedInclude,
-		additionalScopes = context.entityOptions.additionalScopes,
-	} = {}): Promise<T> {
+	protected async validateIdHelper(context: EntityService<T>, id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes }): Promise<T> {
 		if (!isUUID(id, '4')) {
 			throw new BadRequestException(`isUUID(id, '4') ${context.getEntityNameByModel(model)}`);
 		}
@@ -107,14 +100,7 @@ export class ValidationService<T> {
 		}
 	}
 
-	protected async validateIdsHelper(context: EntityService<T>, ids: string[], {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = context.entityOptions.unscoped,
-		unscopedInclude = context.entityOptions.unscopedInclude,
-		additionalScopes = context.entityOptions.additionalScopes,
-	} = {}) {
+	protected async validateIdsHelper(context: EntityService<T>, ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes }) {
 		if (ids.some(id => !isUUID(id, '4'))) {
 			throw new BadRequestException(`isUUID(id, '4') ${context.getEntityNameByModel(model)}`);
 		}
@@ -195,14 +181,7 @@ export class ValidationService<T> {
 		}));
 	}
 
-	private validateAndParseJsonHelper({
-		input,
-		errorMessage,
-		keyConstraint,
-		valueConstraint,
-		keyTransform,
-		valueTransform,
-	}: ValidateAndParseJsonInput) {
+	protected validateAndParseJsonHelper({ input, errorMessage, keyConstraint, valueConstraint, keyTransform, valueTransform }: ValidateAndParseJsonInput) {
 		try {
 			let parsedJson = (typeof input === 'object' && input !== null) ? input : JSON.parse(input);
 
