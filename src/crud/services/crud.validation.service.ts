@@ -116,12 +116,13 @@ export class CrudValidationService<T> {
 	public async validateAdvancedMultipleRelations(context: CrudService<T>, entityId: string|null, dto) {
 		for (let relation of context.getAdvancedMultipleRelations(dto)) {
 			let input = dto[relation.name];
+			const count = input?.length ?? 0;
 
-			if (input?.length < relation.minCount || input?.length > relation.maxCount) {
+			if (count < relation.minCount || count > relation.maxCount) {
 				throw new BadRequestException(`Property ${relation.name} minCount: ${relation.minCount}, maxCount: ${relation.maxCount}`);
 			}
 
-			if (!input?.length) {
+			if (!count) {
 				return dto;
 			}
 
