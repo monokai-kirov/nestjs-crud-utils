@@ -26,7 +26,7 @@ export class EntityService<T> {
 	 * @Override
 	 */
 	protected getIncludeOptions(): Include { return []; }
-	protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> { return ['id', 'title']; }
+	protected getSearchingProps(): Array<string|string[]|{ property: string|string[], transform?: Function }> { return ['id', 'title']; }
 
 
 	public static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {
@@ -109,36 +109,28 @@ export class EntityService<T> {
 
 	protected addSearchToFindOptions(search, findOptions) {
 		const searchWhere = [];
-		const relations = [...new Set([
-			...this.getSingleRelations().map(v => v.name),
-			...this.getMultipleRelations().map(v => v.name),
-		])];
 
 		for (let option of this.getSearchingProps()) {
-			const isObject = (typeof option === 'object' && option !== null);
-			let col;
+			let property = option;
 			let value = search;
 
-			if (isObject) {
-				if (option['relation'] && relations.includes(option['relation'])) {
-					col = `${option['relation']}.${option['property']}`;
-				} else {
-					col = `${this.__crudModel__.name}."${option['property']}"`;
+			if ((typeof option === 'object' && option !== null)) {
+				if (option['property']) {
+					property = option['property'];
 				}
-
 				if (option['transform']) {
 					value = option['transform'](value);
 				}
-			} else if (relations.includes(option as string)) {
-				col = `${option}."title"`;
-			} else {
-				col = `${this.__crudModel__.name}."${option}"`;
 			}
 
 			if (value) {
 				searchWhere.push(
 					Sequelize.where(
-						Sequelize.cast(Sequelize.col(col), 'text'),
+						(Array.isArray(property)
+							? Sequelize.fn('concat', ...property
+								.map(v => Sequelize.cast(Sequelize.col(`"${this.__crudModel__.name}"."${v}"`), 'text'))
+								.reduce((acc, v) => acc.concat(v, ' '), []))
+							: Sequelize.cast(Sequelize.col(`"${this.__crudModel__.name}"."${property}"`), 'text')),
 						{[Op.iLike]: `%${value}%`} as any
 					),
 				);
