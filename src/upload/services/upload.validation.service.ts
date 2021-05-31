@@ -22,7 +22,7 @@ export class UploadValidationService {
 		dto = {},
 		entity = null,
 		minCount = 0,
-		maxCount = 1,
+		maxCount = Infinity,
 	}: {
 		context: UploadService,
 		propName: string,

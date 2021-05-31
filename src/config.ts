@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
-import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import * as redisStore from 'cache-manager-ioredis';
+import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { SequelizeOptions } from 'sequelize-typescript';
 import { defaultScopeOptions } from './sequelize.options';
 
@@ -62,8 +62,8 @@ export class Config {
 		return {
 			store: redisStore,
 			...(this.getRedisOptions()),
-			ttl: 60,
-			max: 200,
+			ttl: 300,
+			max: 500,
 			...redefined,
 		};
 	}
@@ -87,13 +87,6 @@ export class Config {
 			ttl: 60,
 			limit: 20,
 			storage: new ThrottlerStorageRedisService(this.getRedisClient()),
-		};
-	}
-
-	public getSentryOptions() {
-		return {
-			dsn: process.env.SENTRY_DSN,
-			tracesSampleRate: 1.0,
 		};
 	}
 
@@ -125,6 +118,13 @@ export class Config {
 				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 			],
 			SUMMARY_SIZE_LIMIT: 100_000_000, // 100 Mb
+		};
+	}
+
+	public getSentryOptions() {
+		return {
+			dsn: process.env.SENTRY_DSN,
+			tracesSampleRate: 1.0,
 		};
 	}
 }

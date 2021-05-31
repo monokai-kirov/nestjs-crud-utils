@@ -26,7 +26,7 @@ export class EntityService<T> {
 	 * @Override
 	 */
 	protected getIncludeOptions(): Include { return []; }
-	protected getSearchingProps(): Array<string|string[]|{ property: string|string[], transform?: Function }> { return ['id', 'title']; }
+	protected getSearchingProps(): Array<string|string[]|{ property: string|string[], transform: Function }> { return ['id', 'title']; }
 
 
 	public static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {

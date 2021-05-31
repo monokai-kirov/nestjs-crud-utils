@@ -49,7 +49,7 @@ export class UploadService {
 		dto = {},
 		entity = null,
 		minCount = 0,
-		maxCount = 1,
+		maxCount = Infinity,
 	}: {
 		propName: string,
 		type: UploadType|UploadType[],

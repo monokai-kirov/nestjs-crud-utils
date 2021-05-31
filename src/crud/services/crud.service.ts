@@ -104,44 +104,6 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	public getUploads(dto?): Array<UploadParam> {
-		return this.getMetadataHelper(UPLOAD_METADATA_KEY, dto);
-	}
-
-	public getAdvancedMultipleRelations(dto?) {
-		return this.getMetadataHelper(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, dto);
-	}
-
-	private getMetadataHelper(key: string, dto?) {
-		if (!this.getDtoType(dto)?.prototype) {
-			return [];
-		}
-		return Reflect.getMetadata(key, this.getDtoType(dto).prototype) ?? [];
-	}
-
-	public normalizeFiles(requestedFiles: { [key: string]: string }|any[] = []) {
-		if (!Array.isArray(requestedFiles)) {
-			return requestedFiles;
-		}
-
-		const files = {};
-		for (let requestedFile of requestedFiles) {
-			if (!files[requestedFile.fieldname]) {
-				files[requestedFile.fieldname] = [];
-			}
-			files[requestedFile.fieldname].push(requestedFile);
-		}
-		return files;
-	}
-
-	public async createOrUpdate(entity: T|undefined|null, dto, files) {
-		if (!(entity as any)?.id) {
-			await this.create(dto, files);
-		} else {
-			await this.updateById(entity['id'], dto, files);
-		}
-	}
-
 	public async create(dto, files): Promise<T> {
 		dto = await this.fillDto(null, dto);
 		dto = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
@@ -453,6 +415,36 @@ export class CrudService<T> extends EntityService<T> {
 	}
 	public async validateBeforeRemoving(id: string, force?: boolean) {
 		return this.crudValidationService.validateBeforeRemoving(this, id, force);
+	}
+
+	public getUploads(dto?): Array<UploadParam> {
+		return this.getMetadataHelper(UPLOAD_METADATA_KEY, dto);
+	}
+
+	public getAdvancedMultipleRelations(dto?) {
+		return this.getMetadataHelper(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, dto);
+	}
+
+	private getMetadataHelper(key: string, dto?) {
+		if (!this.getDtoType(dto)?.prototype) {
+			return [];
+		}
+		return Reflect.getMetadata(key, this.getDtoType(dto).prototype) ?? [];
+	}
+
+	public normalizeFiles(requestedFiles: { [key: string]: string }|any[] = []) {
+		if (!Array.isArray(requestedFiles)) {
+			return requestedFiles;
+		}
+
+		const files = {};
+		for (let requestedFile of requestedFiles) {
+			if (!files[requestedFile.fieldname]) {
+				files[requestedFile.fieldname] = [];
+			}
+			files[requestedFile.fieldname].push(requestedFile);
+		}
+		return files;
 	}
 
 	public checkConflictRelations() {
