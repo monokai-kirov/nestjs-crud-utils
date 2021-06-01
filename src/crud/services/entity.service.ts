@@ -350,7 +350,7 @@ export class EntityService<T> {
 
 	public getMultipleRelations(model?): Array<{ name: string, model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(([key, value]: any) => value.associationType === 'BelongsToMany' && value.target.prototype.constructor !== Upload)
+			.filter(([key, value]: any) => ['BelongsToMany', 'HasMany'].includes(value.associationType) && value.target.prototype.constructor !== Upload)
 			.map(([key, value]: any) => {
 				return {
 					name: key,
