@@ -106,10 +106,14 @@ export class CrudValidationService<T> {
 			});
 		}
 
+		const advancedMultipleRelations = context.getAdvancedMultipleRelations(dto).map(v => v.name);
+
 		for (let multipleRelation of context.getMultipleRelations(model)) {
-			await context.validateOptionalIds(dto[multipleRelation.name], {
-				model: multipleRelation.model,
-			});
+			if (!advancedMultipleRelations.includes(multipleRelation.name)) {
+				await context.validateOptionalIds(dto[multipleRelation.name], {
+					model: multipleRelation.model,
+				});
+			}
 		}
 	}
 

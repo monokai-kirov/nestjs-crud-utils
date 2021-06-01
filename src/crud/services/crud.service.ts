@@ -181,8 +181,10 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	protected async updateRelations(entity: T, dto, files) {
+		const advancedMultipleRelations = this.getAdvancedMultipleRelations(dto).map(v => v.name);
+
 		for (let relation of this.getMultipleRelations()) {
-			if (dto[relation.name]) {
+			if (dto[relation.name] && !advancedMultipleRelations.includes(relation.name)) {
 				await (entity as any)[`set${utils.ucFirst(relation.name)}`](dto[relation.name]);
 			}
 		}
@@ -427,7 +429,7 @@ export class CrudService<T> extends EntityService<T> {
 		return this.getMetadataHelper(UPLOAD_METADATA_KEY, dto);
 	}
 
-	public getAdvancedMultipleRelations(dto?) {
+	public getAdvancedMultipleRelations(dto) {
 		return this.getMetadataHelper(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, dto);
 	}
 
