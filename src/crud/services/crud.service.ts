@@ -182,7 +182,9 @@ export class CrudService<T> extends EntityService<T> {
 
 	protected async updateRelations(entity: T, dto, files) {
 		for (let relation of this.getMultipleRelations()) {
-			await (entity as any)[`set${utils.ucFirst(relation.name)}`](dto[relation.name] ?? []);
+			if (dto[relation.name]) {
+				await (entity as any)[`set${utils.ucFirst(relation.name)}`](dto[relation.name]);
+			}
 		}
 
 		const childModel = this.getChildModel(dto);
@@ -228,7 +230,9 @@ export class CrudService<T> extends EntityService<T> {
 		childEntity = await childEntity.save();
 
 		for (let childRelation of this.getMultipleRelations(childModel)) {
-			await (childEntity as any)[`set${utils.ucFirst(childRelation.name)}`](dto[childRelation.name] ?? []);
+			if (dto[childRelation.name]) {
+				await (childEntity as any)[`set${utils.ucFirst(childRelation.name)}`](dto[childRelation.name]);
+			}
 		}
 	}
 
@@ -282,7 +286,9 @@ export class CrudService<T> extends EntityService<T> {
 						});
 
 						for (let linkRelation of this.getMultipleRelations(association.target)) {
-							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name] ?? []);
+							if (values[linkRelation.name]) {
+								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name]);
+							}
 						}
 					})
 			);
