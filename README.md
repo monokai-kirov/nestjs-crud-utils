@@ -243,6 +243,56 @@ export class CategoryService extends CrudService<Category> {
 	}
 ```
 
+## src/admin/controllers/category.controller.ts
+```ts
+import { Controller, UseGuards } from "@nestjs/common";
+import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
+import { ApiResponseDecorator } from "@monokai-kirov/nestjs-crud-utils";
+import { CategoryDto } from "../dto/category.dto";
+import { CategoryService } from "../services/category.service";
+import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
+
+@ApiTags('Admin categories')
+@ApiExtraModels(CategoryDto)
+// @ApiResponseDecorator([401, 403])
+// @RolesDecorator(UserRole.ADMIN)
+// @UseGuards(JwtAuthGuard)
+@Controller('api/admin/categories')
+export class CategoryController extends CrudController {
+	constructor(
+		private readonly categoryService: CategoryService,
+	) {
+		super(categoryService);
+	}
+}
+```
+
+## src/admin/admin.module.ts
+```ts
+import { Category } from './models/category.model';
+import { CategoryService } from './services/category.service';
+import { CategoryController } from './controllers/category.controller';
+// import { Direction } from './models/direction.model';
+// import { CategoryDirection } from './models/category.direction.model';
+
+@Module({
+	imports: [
+		SequelizeModule.forFeature([
+			Category,
+			// Direction,
+			// CategoryDirection,
+		]),
+	],
+	controllers: [
+		CategoryController,
+	],
+	providers: [
+		CategoryService,
+	],
+})
+export class AdminModule {}
+```
+
 ## Inherited from CrudService and EntityService
 ```ts
 /**
@@ -435,56 +485,6 @@ getMultipleRelations(model?: any): Array<{
 }>;
 getUploadRelations(model?: any): string[];
 getAllAssociations(): any[];
-```
-
-## src/admin/controllers/category.controller.ts
-```ts
-import { Controller, UseGuards } from "@nestjs/common";
-import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
-import { ApiResponseDecorator } from "@monokai-kirov/nestjs-crud-utils";
-import { CategoryDto } from "../dto/category.dto";
-import { CategoryService } from "../services/category.service";
-import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
-
-@ApiTags('Admin categories')
-@ApiExtraModels(CategoryDto)
-// @ApiResponseDecorator([401, 403])
-// @RolesDecorator(UserRole.ADMIN)
-// @UseGuards(JwtAuthGuard)
-@Controller('api/admin/categories')
-export class CategoryController extends CrudController {
-	constructor(
-		private readonly categoryService: CategoryService,
-	) {
-		super(categoryService);
-	}
-}
-```
-
-## src/admin/admin.module.ts
-```ts
-import { Category } from './models/category.model';
-import { CategoryService } from './services/category.service';
-import { CategoryController } from './controllers/category.controller';
-// import { Direction } from './models/direction.model';
-// import { CategoryDirection } from './models/category.direction.model';
-
-@Module({
-	imports: [
-		SequelizeModule.forFeature([
-			Category,
-			// Direction,
-			// CategoryDirection,
-		]),
-	],
-	controllers: [
-		CategoryController,
-	],
-	providers: [
-		CategoryService,
-	],
-})
-export class AdminModule {}
 ```
 
 # Decorators list
