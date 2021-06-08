@@ -44,6 +44,23 @@ ioredis
 @nestjs/websockets
 ```
 
+## .env.example for docker environment
+```
+NODE_ENV=production
+
+DB_HOST=db
+DB_PORT=5432
+DB_USERNAME=someuser
+DB_PASSWORD=blablabla
+DB_NAME=somedb
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+WS_PORT=3030
+WS_ORIGIN=https://your_incredible_site.com:*
+```
+
 ## main.ts
 ```ts
 // First line of main.ts
