@@ -228,24 +228,152 @@ export class CategoryService extends CrudService<Category> {
 	/**
 	 * Inherited from CrudService and EntityService
 	 */
-	// public getDtoType(dto) { return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor; }
-	// protected async fillDto(id: string|null, dto): Promise<Object> { return dto; }
-	// protected getIncludeOptions(): { all: boolean } | Object[] { return { all: true }; }
-	// protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> { return ['id', 'title']; }
+	// @Override this if you want@
+	// public getDtoType(dto) { return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor; } // for class-validator
+	// protected async fillDto(id: string|null, dto): Promise<Object> { return dto; } // if you want to add some new properties before saving
+	// protected getIncludeOptions(): { all: boolean } | Object[] { return { all: true }; } // is used in all @Finders@ by default (in CrudService { all: true } and in EntityService [])
+	// protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> { return ['id', 'title']; } // for findWithPagination method
 	// public getConflictRelations(): string[] {
 		// return Object.entries((this.__crudModel__).associations)
 			// .filter(([key, value]: any) =>
-				// ['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType)
-				// && value.target.prototype.constructor !== Upload)
+				// ['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType) && value.target.prototype.constructor !== Upload)
 			// .map(([key, value]: any) => key);
-	// };
+	// }; by default all links don't allow to delete the entity, you can override this behaviour
+
+	/**
+	 * Crud validations (by default all links are validated automatically, override this functions if you intend to validate other cases)
+	 */
 	// public async validateRequest(id: string|null, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	// public async validateCreateRequest(dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	// public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	// public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {}
 
-	// this.correctionService.getCorrectInclude() // addFalseRequiredAttributes if necessary (fix sequelize bugs with subQuery and pagination)
-	// this.correctionService.addCorrectOrder() // add order by entities from the include
+	/**
+	 * Some helpers
+	 */
+	// readonly correctionService: CorrectionService<T>; (by default used in @Finders@ for preventing some sequelize bugs like include limitations and order with include + helper for recursively add attributes: [] in include for @sql group by query@)
+	// readonly validationService: ValidationService<T>; (validateAndParseJsonWithOneKey(), validateAndParseArrayOfJsonsWithOneKey(), validateAndParseArrayOfJsonsWithMultipleKeys() etc.)
+	// public get crudModel(): Model {
+	// 	return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
+	// }
+	// public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
+	// public get tableName() : string { return this.__crudModel__.getTableName() };
+	// public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
+	// public getMaxEntitiesPerPage() : number { return 30; }
+
+	/**
+	 * @Finders@
+	 */
+	// by default with optimizedInclude in count method
+	// findWithPagination({ search, where, include, offset, limit, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	// 		search?: string;
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		offset?: number;
+	// 		limit?: number;
+	// 		order?: any[];
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<{
+	// 		entities: T[];
+	// 		totalCount: number;
+	// }>;
+	// findOne({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<T | null>;
+	// findOneById(id: string, { where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<T | null>;
+	// findAll({ where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		order?: any[];
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<T[]>;
+	// findAllByIds(ids: string[], { where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		order?: any[];
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<T[]>;
+	// count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: { // by default with optimizedInclude
+	// 		where?: Object;
+	// 		include?: Include;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// 		[key: string]: any;
+	// }): Promise<number>;
+
+	// /**
+	//  * Validations
+	//  */
+	// validateDto(dtoType: any, dto: any, whitelist?: boolean): Promise<unknown[]>;
+	// validateMandatoryId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
+	// 		where?: {};
+	// 		include?: any[];
+	// 		model?: any;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// }): Promise<T>;
+	// validateOptionalId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
+	// 		where?: {};
+	// 		include?: any[];
+	// 		model?: any;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// }): Promise<T | void>;
+	// validateMandatoryIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
+	// 		where?: {};
+	// 		include?: any[];
+	// 		model?: any;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// }): Promise<void>;
+	// validateOptionalIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
+	// 		where?: {};
+	// 		include?: any[];
+	// 		model?: any;
+	// 		unscoped?: boolean;
+	// 		unscopedInclude?: boolean;
+	// 		additionalScopes?: string[];
+	// }): Promise<void>;
+
+	/**
+	 * Relations
+	 */
+	// getSingleRelations(model?: any): Array<{
+	// 		name: string;
+	// 		model: Model;
+	// }>;
+	// getMultipleRelations(model?: any): Array<{
+	// 		name: string;
+	// 		model: Model;
+	// }>;
+	// getUploadRelations(model?: any): string[];
+	// getAllAssociations(): any[];
+
 
 	/**
 	 * Default options for CrudService
@@ -254,10 +382,10 @@ export class CategoryService extends CrudService<Category> {
 	 *	withRelationValidation: true,
 	 *	withUploadValidation: true,
 	 *	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
-	 *	withActiveUpdate: false,
+	 *	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
 	 *	unscoped: true,
 	 *	additionalScopes: ['admin'],
-	 *	childModels: [],
+	 *	childModels: [], // for automatically handle inheritance
 	 * };
 	 */
 
@@ -448,7 +576,7 @@ export class EventsGateway {}
 # Filters
 ```ts
 AllExceptionsFilter
-AllWsExceptionsFilter
+AllWsExceptionsFilter (fixes nestjs + class-validator 500 internal server error bug)
 ```
 
 ## CryptoModule, EmailModule, config, utils, sequelize-options etc.

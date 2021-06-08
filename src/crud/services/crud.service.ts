@@ -272,7 +272,9 @@ export class CrudService<T> extends EntityService<T> {
 						link = await link.save();
 
 						for (let linkRelation of this.getMultipleRelations(association.target)) {
-							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name] ?? []);
+							if (values[linkRelation.name]) {
+								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](values[linkRelation.name] ?? []);
+							}
 						}
 					})
 			)
