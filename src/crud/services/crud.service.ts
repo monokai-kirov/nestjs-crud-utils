@@ -243,7 +243,7 @@ export class CrudService<T> extends EntityService<T> {
 			let input = dto[relation.name];
 
 			if (!input?.length) {
-				return;
+				continue;
 			}
 
 			const association = this.__crudModel__.associations[relation.name];

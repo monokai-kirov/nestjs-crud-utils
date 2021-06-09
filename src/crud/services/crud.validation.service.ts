@@ -127,7 +127,7 @@ export class CrudValidationService<T> {
 			}
 
 			if (!count) {
-				return dto;
+				continue;
 			}
 
 			input = input.map(chunk => {
