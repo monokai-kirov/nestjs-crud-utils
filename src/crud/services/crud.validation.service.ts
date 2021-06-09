@@ -158,9 +158,9 @@ export class CrudValidationService<T> {
 						model: association.target,
 					});
 					const { id, ...dtoWithoutId } = chunk;
-					await context.validateDto(relation.schema, dtoWithoutId);
+					chunk = await context.validateDto(relation.schema, dtoWithoutId);
 				} else {
-					await context.validateDto(relation.schema, chunk);
+					chunk = await context.validateDto(relation.schema, chunk);
 				}
 
 				for (let relationToValidate of relationsToValidate) {
