@@ -133,10 +133,10 @@ export class Category extends Model {
 	@Column({ type: DataType.TEXT, allowNull: true })
 	description: string|null;
 
-	@UploadForeignKeyDecorator(() => Upload)
+	@UploadForeignKeyDecorator()
 	imageId: string|null;
 
-	@UploadBelongsToDecorator(() => Upload)
+	@UploadBelongsToDecorator()
 	image: Upload|null;
 
 	/**

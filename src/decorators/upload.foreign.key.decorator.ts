@@ -1,7 +1,8 @@
 import 'reflect-metadata';
 import { Column, DataType, ForeignKey } from 'sequelize-typescript';
+import { Upload } from '../upload/models/upload.model';
 
-export function UploadForeignKeyDecorator(modelFunc: () => Object) {
+export function UploadForeignKeyDecorator(modelFunc: () => Object = () => Upload) {
 	return function(target, propertyKey, descriptor?) {
 		const decorators = [
 			ForeignKey(modelFunc as any),
