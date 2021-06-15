@@ -20,7 +20,7 @@ export class AllWsExceptionsFilter extends BaseWsExceptionFilter {
 			let content;
 
 			if (typeof (exception as any).getResponse === 'function') {
-				content = typeof (exception as any).getResponse();
+				content = exception.getResponse();
 			} else {
 				content = 'Internal server error';
 			}
