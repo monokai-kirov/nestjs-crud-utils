@@ -3,7 +3,13 @@
   "author": "Monokai Kirov",
   "version": "0.2.31",
   "description": "Nestjs sequelize-crud; Upload; removing triggers for Upload; collection of decorators; base guards, pipes, interceptors, filters; EmailService, SmsService; config, utils, sequelize-options;",
-  "keywords": ["nestjs sequelize crud", "sequelize crud", "nestjs crud utils", "upload", "removing triggers for upload"],
+  "keywords": [
+    "nestjs sequelize crud",
+    "sequelize crud",
+    "nestjs crud utils",
+    "upload",
+    "removing triggers for upload"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/monokai-kirov/nestjs-crud-utils#readme",
   "repository": {
@@ -35,6 +41,7 @@
     "nodemailer": "^6.6.0",
     "pg-listen": "^1.7.0",
     "redis-semaphore": "^4.1.0",
+    "safe-redis-leader": "0.0.6",
     "sharp": "^0.28.1",
     "sms_ru": "0.0.1",
     "uuid": "^8.3.2"

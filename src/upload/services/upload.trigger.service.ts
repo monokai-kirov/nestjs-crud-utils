@@ -5,12 +5,7 @@ import { Sequelize } from "sequelize-typescript";
 import { PgService } from "./pg.service";
 import { config } from "../../config";
 import { QueryTypes } from "sequelize";
-import { uploadTriggerModels } from "./upload.service";
-import { utils } from "../../utils";
-const path = require('path');
-const fs = require('fs');
-const fsExtra = require('fs-extra');
-const extFs = require('extfs');
+import { UploadService, uploadTriggerModels } from "./upload.service";
 
 @Injectable()
 export class UploadTriggerService {
@@ -18,10 +13,14 @@ export class UploadTriggerService {
 		@InjectConnection()
 		private sequelize: Sequelize,
 		private readonly pgService: PgService,
+		private readonly uploadService: UploadService,
 	) {}
 
 	public async onApplicationBootstrap() {
-		const mutex = await utils.acquireMutexWithoutStore('UploadTriggerService');
+		const isLeader = await config.isLeader();
+		if (!isLeader) {
+			return;
+		}
 
 		await this.removeTriggersAndFunctions();
 		await this.createUploadRemovingTriggerAndEventListener();
@@ -29,26 +28,6 @@ export class UploadTriggerService {
 		for (let crudModel of uploadTriggerModels) {
 			await this.createRemovingTriggers(crudModel);
 		}
-
-		await mutex.release();
-	}
-
-	private async createUploadRemovingTriggerAndEventListener() {
-		const tableName = Upload.getTableName();
-		const eventName = `${tableName}_removing_event`;
-
-		await this.createTrigger(String(tableName), `
-			PERFORM pg_notify('${eventName}', '{
-				"table": "' || TG_TABLE_NAME || '",
-				"action": "delete",
-				"row":' || row_to_json(OLD)::text ||
-			'}');
-			RETURN OLD;
-		`.trim());
-
-		this.pgService.addEventListener(eventName, async (payload) => {
-			await this.removeUpload(payload.row);
-		});
 	}
 
 	private async removeTriggersAndFunctions() {
@@ -80,40 +59,21 @@ export class UploadTriggerService {
 		await this.sequelize.query(dropFunctionQuery);
 	}
 
-	private async removeUpload(row) {
-		if (row.url) {
-			const relativeFilePath = row.url.split(path.sep).filter(chunk => chunk.trim()).join(path.sep);
-			const absoluteFilePath = path.resolve(relativeFilePath);
-			const absoluteFolderPath = path.resolve(path.dirname(relativeFilePath));
+	private async createUploadRemovingTriggerAndEventListener() {
+		const tableName = Upload.getTableName();
+		const eventName = `${tableName}_removing_event`;
 
-			if (this.isRemoveAllowed(absoluteFilePath)) {
-				try {
-					if (row.preview) {
-						const absoluteFilePreviewPath = path.resolve(row.preview.split(path.sep).filter(chunk => chunk.trim()).join(path.sep));
-						await fsExtra.remove(absoluteFilePreviewPath);
-					}
-					await fsExtra.remove(absoluteFilePath);
+		await this.createTrigger(String(tableName), `
+			PERFORM pg_notify('${eventName}', '{
+				"table": "' || TG_TABLE_NAME || '",
+				"action": "delete",
+				"row":' || row_to_json(OLD)::text ||
+			'}');
+			RETURN OLD;
+		`.trim());
 
-					if (await this.isEmptyDirectory(absoluteFolderPath)) {
-						await fsExtra.remove(absoluteFolderPath);
-					}
-				} catch (e) {}
-			}
-		}
-	}
-
-	private isRemoveAllowed(absolutePath: string): boolean {
-		return config.getUploadOptions().folders.some(folder => {
-			const uploadPath = path.resolve(folder);
-			return absolutePath.startsWith(uploadPath) && fs.existsSync(absolutePath);
-		});
-	}
-
-	private isEmptyDirectory(path: string): Promise<boolean> {
-		return new Promise(resolve => {
-			extFs.isEmpty(path, function(empty) {
-				resolve(empty);
-			});
+		this.pgService.addEventListener(eventName, async (payload) => {
+			await this.removeUpload(payload.row);
 		});
 	}
 
@@ -193,5 +153,9 @@ export class UploadTriggerService {
 			${when} DELETE ON public."${tableName}"
 			FOR EACH ROW EXECUTE PROCEDURE ${functionName}();
 		`);
+	}
+
+	private async removeUpload(row) {
+		await this.uploadService.remove(row);
 	}
 }

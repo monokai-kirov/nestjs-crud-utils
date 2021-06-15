@@ -1,11 +1,30 @@
 import Redis from 'ioredis';
 import * as redisStore from 'cache-manager-ioredis';
 import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
+import { createSafeRedisLeader } from 'safe-redis-leader';
 import { SequelizeOptions } from 'sequelize-typescript';
 import { defaultScopeOptions } from './sequelize.options';
 
 export class Config {
 	protected redisClient = null;
+	protected resolveSafeLeader;
+	protected safeLeader = new Promise<any>((resolve) => {
+		this.resolveSafeLeader = (result) => resolve(result);
+	});
+
+	constructor() {
+		createSafeRedisLeader({
+			asyncRedis: this.getRedisClient(),
+			ttl: 1500,
+			wait: 3000,
+			key: 'the-election',
+		}).then(async safeLeader => {
+			await safeLeader.elect();
+			this.resolveSafeLeader(safeLeader);
+		}).catch(() => {
+			process.exit(1);
+		});
+	}
 
 	public isDevelopment() {
 		return (process.env.NODE_ENV === 'development');
@@ -19,7 +38,7 @@ export class Config {
 		return process.env.CORS_ORIGIN;
 	}
 
-	public getDatabaseOptions() {
+	public getDatabaseOptions(sync = true) {
 		return ({
 			dialect: 'postgres',
 			host: process.env.DB_HOST,
@@ -28,10 +47,12 @@ export class Config {
 			password: process.env.DB_PASSWORD,
 			database: process.env.DB_NAME,
 			autoLoadModels: true,
-			synchronize: true,
-			sync: {
-				alter: true,
-			},
+			...(sync ? {
+				synchronize: true,
+				sync: {
+					alter: true,
+				},
+			} : {}),
 			logging: false,
 			pool: {
 				max: 100,
@@ -42,6 +63,11 @@ export class Config {
 				defaultScope: defaultScopeOptions,
 			},
 		} as unknown) as SequelizeOptions;
+	}
+
+	public async getAsyncDatabaseOptions() {
+		const isLeader = await this.isLeader();
+		return this.getDatabaseOptions(isLeader);
 	}
 
 	public getRedisClient() {
@@ -56,6 +82,11 @@ export class Config {
 			host: process.env.REDIS_HOST,
 			port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
 		};
+	}
+
+	public async isLeader() {
+		const safeLeader = (await this.safeLeader);
+		return safeLeader.isLeader();
 	}
 
 	public getCacheOptions(redefined = {}) {

@@ -9,6 +9,8 @@ import { utils } from "../../utils";
 import { config } from "../../config";
 const path = require('path');
 const fs = require('fs');
+const fsExtra = require('fs-extra');
+const extFs = require('extfs');
 const mkdirp = require('mkdirp');
 const sharp = require('sharp');
 const ffmpeg = require('fluent-ffmpeg');
@@ -183,7 +185,7 @@ export class UploadService {
 			buffer = file.buffer ?? file.path;
 		}
 
-		await this.writeBufferToDisk(buffer, absoluteFilePath, absoluteFolderPath);
+		await this.writeBufferToStorage(buffer, absoluteFilePath, absoluteFolderPath);
 
 		let preview = null;
 		if (config.getUploadOptions().ALLOWED_VIDEO_MIMETYPES.includes(file.mimetype)) {
@@ -201,7 +203,7 @@ export class UploadService {
 		return uploadEntity.save();
 	}
 
-	private async handlePicture(file: MulterFile, width: number, height?: number, handlePicture?: (sharp) => any): Promise<Buffer> {
+	protected async handlePicture(file: MulterFile, width: number, height?: number, handlePicture?: (sharp) => any): Promise<Buffer> {
 		if (file.mimetype === 'image/svg+xml') {
 			return file.buffer;
 		}
@@ -212,7 +214,7 @@ export class UploadService {
 			: sharp(param).resize(width, height).toBuffer();
 	}
 
-	private async handleVideo({
+	protected async handleVideo({
 		hash,
 		uploadFolder,
 		absoluteFilePath,
@@ -254,7 +256,7 @@ export class UploadService {
 			});
 	}
 
-	private async writeBufferToDisk(buffer: Buffer, uploadPath, uploadFolderPath): Promise<void> {
+	protected async writeBufferToStorage(buffer: Buffer, uploadPath, uploadFolderPath): Promise<void> {
 		await mkdirp(uploadFolderPath);
 
 		const write = (resolve, reject) => {
@@ -276,6 +278,47 @@ export class UploadService {
 		}
 	}
 
+	public async createRemovingTriggers(crudModel) {
+		uploadTriggerModels.push(crudModel);
+	}
+
+	public async remove(dbRowInsideTrigger) {
+		if (dbRowInsideTrigger.url) {
+			const relativeFilePath = dbRowInsideTrigger.url.split(path.sep).filter(chunk => chunk.trim()).join(path.sep);
+			const absoluteFilePath = path.resolve(relativeFilePath);
+			const absoluteFolderPath = path.resolve(path.dirname(relativeFilePath));
+
+			if (this.isRemoveAllowed(absoluteFilePath)) {
+				try {
+					if (dbRowInsideTrigger.preview) {
+						const absoluteFilePreviewPath = path.resolve(dbRowInsideTrigger.preview.split(path.sep).filter(chunk => chunk.trim()).join(path.sep));
+						await fsExtra.remove(absoluteFilePreviewPath);
+					}
+					await fsExtra.remove(absoluteFilePath);
+
+					if (await this.isEmptyDirectory(absoluteFolderPath)) {
+						await fsExtra.remove(absoluteFolderPath);
+					}
+				} catch (e) {}
+			}
+		}
+	}
+
+	private isRemoveAllowed(absolutePath: string): boolean {
+		return config.getUploadOptions().folders.some(folder => {
+			const uploadPath = path.resolve(folder);
+			return absolutePath.startsWith(uploadPath) && fs.existsSync(absolutePath);
+		});
+	}
+
+	private isEmptyDirectory(path: string): Promise<boolean> {
+		return new Promise(resolve => {
+			extFs.isEmpty(path, function(empty) {
+				resolve(empty);
+			});
+		});
+	}
+
 	public async createDetachedFiles(files: MulterFile[] = []) {
 		return Promise.all(
 			files.map(async (newFile) =>
@@ -287,9 +330,5 @@ export class UploadService {
 				})
 			)
 		);
-	}
-
-	public async createRemovingTriggers(crudModel) {
-		uploadTriggerModels.push(crudModel);
 	}
 }
