@@ -125,7 +125,7 @@ export class EntityService<T> {
 
 			const getFinalProperty = (property) => {
 				if (property.includes('.')) {
-						return property.split('.').map(v => `${v}`).join('.');
+						return property.split('.').map(v => `"${v}"`).join('.');
 				} else {
 						return `"${this.__crudModel__.name}"."${property}"`;
 				}
