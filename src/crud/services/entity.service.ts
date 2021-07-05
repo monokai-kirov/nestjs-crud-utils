@@ -63,6 +63,7 @@ export class EntityService<T> {
 		include = this.getIncludeOptions(),
 		offset = 0,
 		limit = this.getMaxEntitiesPerPage(),
+		page,
 		order = [],
 		unscoped = this.entityOptions.unscoped,
 		unscopedInclude = this.entityOptions.unscopedInclude,
@@ -74,6 +75,7 @@ export class EntityService<T> {
 		include?: Include,
 		offset?: number,
 		limit?: number,
+		page?: number,
 		order?: any[],
 		unscoped?: boolean,
 		unscopedInclude?: boolean,
@@ -94,7 +96,14 @@ export class EntityService<T> {
 		}
 
 		const totalCount = await this.count(findOptions);
-		const { offset: transformedOffset, limit: transformedLimit } = this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount);
+
+		let transformedOffset, transformedLimit;
+		if (page) {
+			transformedOffset = (page - 1) * limit;
+			transformedLimit = limit;
+		} else {
+			({ offset: transformedOffset, limit: transformedLimit } = this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount));
+		}
 
 		return {
 			entities: await this.findAll({
