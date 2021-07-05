@@ -6,6 +6,7 @@ export * from './array.of.jsons.decorator';
 export * from './array.of.objects.decorator';
 export * from './array.of.uuids.decorator';
 export * from './boolean.decorator';
+export * from './cache.decorator';
 export * from './date.decorator';
 export * from './decimal.decorator';
 export * from './email.decorator';
