@@ -20,7 +20,7 @@ export class CorrectionService<T> {
 		let result = [];
 
 		if (order.length || group) {
-			return result;
+			return order;
 		}
 
 		if (unscoped && parent._scope?.order) {
