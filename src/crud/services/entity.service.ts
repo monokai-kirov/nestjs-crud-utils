@@ -123,14 +123,22 @@ export class EntityService<T> {
 				}
 			}
 
+			const getFinalProperty = (property) => {
+				if (property.includes('.')) {
+						return property.split('.').map(v => `"${v}"`).join('.');
+				} else {
+						return `"${this.__crudModel__.name}"."${property}"`;
+				}
+			};
+
 			if (value) {
 				searchWhere.push(
 					Sequelize.where(
 						(Array.isArray(property)
 							? Sequelize.fn('concat', ...property
-								.map(v => Sequelize.cast(Sequelize.col(`"${this.__crudModel__.name}"."${v}"`), 'text'))
+								.map(v => Sequelize.cast(Sequelize.col(getFinalProperty(v)), 'text'))
 								.reduce((acc, v) => acc.concat(v, ' '), []))
-							: Sequelize.cast(Sequelize.col(`"${this.__crudModel__.name}"."${property}"`), 'text')),
+							: Sequelize.cast(Sequelize.col(getFinalProperty(property)), 'text')),
 						{[Op.iLike]: `%${value}%`} as any
 					),
 				);
