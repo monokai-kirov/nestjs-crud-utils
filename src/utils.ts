@@ -31,7 +31,7 @@ class Utils {
 	}
 
 	private normalizeHelper(obj, callback: Function) {
-		if (obj === null || (!Array.isArray(obj) && typeof obj !== 'object')) return obj;
+		if (obj === null || (!Array.isArray(obj) && typeof obj !== 'object') || obj instanceof Buffer) return obj;
 
 		return Object
 			.keys(obj)
