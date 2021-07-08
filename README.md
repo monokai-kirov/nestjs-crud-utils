@@ -9,39 +9,7 @@
 
 ## PeerDependencies
 ```bash
-npm install --save @nestjs/common @nestjs/core rxjs reflect-metadata dotenv @nestjs/config @nestjs/sequelize sequelize sequelize-typescript pg @nestjs/platform-express @nestjs/throttler ioredis @nestjs/swagger @nestjs/websockets
-```
-
-## Dependencies clarifying
-```ts
-// basic nestjs
-@nestjs/common
-@nestjs/core
-rxjs
-reflect-metadata
-
-// config
-dotenv
-@nestjs/config
-
-// database
-@nestjs/sequelize
-sequelize
-sequelize-typescript
-pg
-
-// file upload
-@nestjs/platform-express
-
-// rate-limit and mutex
-@nestjs/throttler
-ioredis
-
-// open api
-@nestjs/swagger
-
-// websockets
-@nestjs/websockets
+npm install --save ioredis @nestjs/sequelize sequelize sequelize-typescript
 ```
 
 ## .env.example for docker environment
