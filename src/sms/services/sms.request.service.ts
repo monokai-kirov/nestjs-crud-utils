@@ -39,8 +39,8 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 		try {
 			if (config.isProduction()) {
 				await this.sendHelper(from, phone, message);
+				await this.createSmsRequestEntityAndRemoveUnnecessaryEntries(req);
 			}
-			await this.createSmsRequestEntityAndRemoveUnnecessaryEntries(req);
 			return {
 				isSmsSent: true,
 			};
