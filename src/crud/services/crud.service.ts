@@ -330,84 +330,122 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	protected async updateActive(entity: T, dto) {
-		const processedManyToMany = [];
-		await this.updateActiveHelper(this.__crudModel__, entity['id'], dto, processedManyToMany);
+		await this.updateActiveHelper(this.__crudModel__, entity['id'], dto, []);
 	}
 
 	protected async updateActiveHelper(model, linkedIds: string|string[], dto, processedManyToMany: any[]) {
 		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
 		const options = <ActiveUpdate>this.crudOptions.withActiveUpdate;
-		const isActive = options.calcActive ?? ((dto) => dto.isActive)(dto);
+		const isActive = options.calcActive ? options.calcActive(dto) : ((dto) => dto.isActive)(dto);
 
 		if (!options.childs?.length) {
 			return;
 		}
+
+		const childs = options.childs.map((v: any) => v.model ? v.model : v);
 
 		return Promise.all(Object.entries(model.associations)
 				.map(([key, value]: any) => value)
 				.filter(association => associationTypes.includes(association.associationType))
 				.map(async (association) => {
 					const option = <ActiveUpdateOption>options.childs.find((v: any) => v === association.target || v.model == association.target);
-					if (!option) {
-						return;
-					}
-
-					const ids = Array.isArray(linkedIds) ? linkedIds : [linkedIds];
 					let entities = [];
-					const field = option.field ?? 'isActive';
-					const trueValue = option.trueValue ?? true;
-					const falsyValue = option.falsyValue ?? false;
+					let entitiesToUpdate = [];
 
-					if (association.associationType === 'BelongsToMany') {
-						if (processedManyToMany.includes(association.source)) {
-							return;
-						}
+					if (option) {
+						const ids = Array.isArray(linkedIds) ? linkedIds : [linkedIds];
+						const field = option.field ?? 'isActive';
+						const trueValue = option.trueValue ?? true;
+						const falsyValue = option.falsyValue ?? false;
 
-						const entitiesToUpdate = await (association.target.unscoped()).findAll({
-							include: [
-								{
-									model: association.source,
-									where: {
-										id: {
-											[Op.in]: ids,
+						if (association.associationType === 'BelongsToMany') {
+							if (processedManyToMany.includes(association.source)) {
+								return;
+							}
+
+							entitiesToUpdate = await (association.target.unscoped()).findAll({
+								include: [
+									{
+										model: association.source,
+										where: {
+											id: {
+												[Op.in]: ids,
+											},
 										},
+										required: true,
 									},
-									required: true,
-								},
-							],
-						});
+								],
+							});
 
-						if (entitiesToUpdate.length) {
-							const [_, updateResult] = await (association.target.unscoped()).update(
-								{ [field]: isActive ? trueValue : falsyValue },
-								{ where: { id: { [Op.in]: entitiesToUpdate.map(v => v.id) }},
-									returning: true,
-								},
-							);
-							entities = updateResult;
-						}
+							if (entitiesToUpdate.length) {
+								const [_, updateResult] = await (association.target.unscoped()).update(
+									{ [field]: isActive ? trueValue : falsyValue },
+									{ where: { id: { [Op.in]: entitiesToUpdate.map(v => v.id) }},
+										returning: true,
+									},
+								);
+								entities = updateResult;
+							}
 
-						processedManyToMany.push(association.target);
-					} else {
-						const [_, updateResult] = await (association.target.unscoped()).update(
-							{ [field]: isActive ? trueValue : falsyValue },
-							{
+							processedManyToMany.push(association.target);
+						} else {
+							entitiesToUpdate = await (association.target.unscoped()).findAll({
 								where: {
 									[utils.snakeCaseToCamel(association.foreignKey)]: {
 										[Op.in]: ids,
 									},
 								},
-								returning: true
-							},
-						);
-						entities = updateResult;
+							});
+
+							const [_, updateResult] = await (association.target.unscoped()).update(
+								{ [field]: isActive ? trueValue : falsyValue },
+								{
+									where: {
+										[utils.snakeCaseToCamel(association.foreignKey)]: {
+											[Op.in]: ids,
+										},
+									},
+									returning: true
+								},
+							);
+							entities = updateResult;
+						}
 					}
 
-					if (entities.length) {
-						await this.updateActiveHelper(association.target, entities.map(v => v.id), dto, processedManyToMany);
+					if (entities?.length || this.isAssociationLinked(childs, association.target, [])) {
+						await this.updateActiveHelper(association.target, entitiesToUpdate.map(v => v.id), dto, processedManyToMany);
 					}
 				})
 		);
+	}
+
+	private isAssociationLinked(comparisonModels: Record<string, any>[], model: Record<string, any>, processedManyToMany: any[]) {
+		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
+		let isLinked = false;
+
+		const associations = Object.entries(model.associations)
+			.map(([key, value]: any) => value)
+			.filter(association => associationTypes.includes(association.associationType));
+
+		for (const association of associations) {
+			if (association.associationType === 'BelongsToMany') {
+				if (processedManyToMany.includes(association.source)) {
+					return;
+				}
+				processedManyToMany.push(association.target);
+			}
+
+			if (comparisonModels.find(v => v.getTableName() === association.target.getTableName())) {
+				isLinked = true;
+				break;
+			}
+
+			if (association.target.associations?.length) {
+				this.isAssociationLinked(comparisonModels, association.target, processedManyToMany);
+			}
+		}
+
+		return isLinked;
 	}
 
 	public async removeById(id: string) {
