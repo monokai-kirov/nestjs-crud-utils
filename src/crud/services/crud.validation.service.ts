@@ -79,12 +79,12 @@ export class CrudValidationService<T> {
 		};
 	}
 
-	public async validateBeforeRemoving(context: CrudService<T>, id: string, force?: boolean) {
+	public async validateBeforeRemoving(context: CrudService<T>, id: string, force?: boolean, req?) {
 		await context.validateMandatoryId(id);
 		if (!force) {
 			await this.validateConflictRelations(context, id);
 		}
-		await context.validateDeleteRequest(id, force);
+		await context.validateDeleteRequest(id, force, req);
 	}
 
 	/**

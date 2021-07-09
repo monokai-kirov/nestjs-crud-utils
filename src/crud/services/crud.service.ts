@@ -50,7 +50,7 @@ export class CrudService<T> extends EntityService<T> {
 	public async validateRequest(id: string|null, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	public async validateCreateRequest(dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
 	public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
-	public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {}
+	public async validateDeleteRequest(id: string, force?: boolean, req?): Promise<void> {}
 	public getChildModel(dto) { return null; }
 	public getChildModelKey(): string { return null; }
 	public findAfterCreateOrUpdate(id: string) { return this.findOneById(id); }
@@ -423,8 +423,8 @@ export class CrudService<T> extends EntityService<T> {
 	public async validateBeforeUpdating(id: string, dto, files, req) {
 		return this.crudValidationService.validateBeforeUpdating(this, id, dto, files, req);
 	}
-	public async validateBeforeRemoving(id: string, force?: boolean) {
-		return this.crudValidationService.validateBeforeRemoving(this, id, force);
+	public async validateBeforeRemoving(id: string, force?: boolean, req?) {
+		return this.crudValidationService.validateBeforeRemoving(this, id, force, req);
 	}
 
 	public getUploads(dto?): Array<UploadParam> {

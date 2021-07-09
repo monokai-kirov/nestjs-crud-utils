@@ -92,9 +92,10 @@ export class CrudController {
 	async delete(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Query('force', new OptionalBooleanQueryValidationPipe('force')) force?,
+		@Req() req?,
 		...rest
 	) {
-		await this.service.validateBeforeRemoving(id, force);
+		await this.service.validateBeforeRemoving(id, force, req);
 		await this.service.removeById(id);
 		return {
 			statusCode: 200,
