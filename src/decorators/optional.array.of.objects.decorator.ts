@@ -5,7 +5,9 @@ import { IsArray, IsObject, IsOptional } from 'class-validator';
 export function OptionalArrayOfObjectsDecorator(description = '') {
 	return applyDecorators(
 		ApiPropertyOptional(),
-		ApiProperty({ description: `@IsOptional(), @IsArray(), @IsObject({ each: true }); ${description}` }),
+		ApiProperty({
+			description: `@IsOptional(), @IsArray(), @IsObject({ each: true }); ${description}`,
+		}),
 		IsOptional(),
 		IsArray(),
 		IsObject({ each: true }),

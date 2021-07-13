@@ -8,6 +8,6 @@ export function OptionalArrayOfUUIDsDecorator() {
 		ApiProperty({ description: `@IsOptional(), @IsArray(), @IsUUID('4', { each: true })` }),
 		IsOptional(),
 		IsArray(),
-		IsUUID('4', { each: true })
+		IsUUID('4', { each: true }),
 	);
 }

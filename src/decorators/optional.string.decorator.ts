@@ -5,7 +5,9 @@ import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
 export function OptionalStringDecorator(minLength = 1, maxLength = 256) {
 	return applyDecorators(
 		ApiPropertyOptional(),
-		ApiProperty({ description: `@IsOptional(), @IsString(), @MinLength(${minLength}), @MaxLength(${maxLength})` }),
+		ApiProperty({
+			description: `@IsOptional(), @IsString(), @MinLength(${minLength}), @MaxLength(${maxLength})`,
+		}),
 		IsOptional(),
 		MinLength(minLength),
 		MaxLength(maxLength),

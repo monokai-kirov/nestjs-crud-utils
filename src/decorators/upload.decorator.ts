@@ -12,29 +12,47 @@ export const addUploadToDtoMetadata = (dto, obj) => {
 		uploads = [];
 	}
 
-	if (!uploads.find(v => v.name === obj.name)) {
+	if (!uploads.find((v) => v.name === obj.name)) {
 		uploads.push(obj);
 		Reflect.defineMetadata(UPLOAD_METADATA_KEY, uploads, dto);
 	}
 };
 
-export function UploadDecorator({ type, width, height, required } : {
-	type: UploadType.PICTURE | UploadType.VIDEO,
-	width?: number,
-	height?: number,
-	required?: boolean,
-}) : any;
-export function UploadDecorator({ type, handlePicture, required } : {
-	type: UploadType.PICTURE,
-	handlePicture: (sharp) => any,
-	required?: boolean,
-}) : any;
-export function UploadDecorator({ type, required } : {
-	type: Omit<UploadType, UploadType.PICTURE> | Array<Omit<UploadType, UploadType.PICTURE>>,
-	required?: boolean,
-}) : any;
-export function UploadDecorator({ type, width, height, handlePicture, required = false }: any): any {
-	return function(target, propertyKey, descriptor?) {
+export function UploadDecorator({
+	type,
+	width,
+	height,
+	required,
+}: {
+	type: UploadType.PICTURE | UploadType.VIDEO;
+	width?: number;
+	height?: number;
+	required?: boolean;
+}): any;
+export function UploadDecorator({
+	type,
+	handlePicture,
+	required,
+}: {
+	type: UploadType.PICTURE;
+	handlePicture: (sharp) => any;
+	required?: boolean;
+}): any;
+export function UploadDecorator({
+	type,
+	required,
+}: {
+	type: Omit<UploadType, UploadType.PICTURE> | Array<Omit<UploadType, UploadType.PICTURE>>;
+	required?: boolean;
+}): any;
+export function UploadDecorator({
+	type,
+	width,
+	height,
+	handlePicture,
+	required = false,
+}: any): any {
+	return function (target, propertyKey, descriptor?) {
 		addUploadToDtoMetadata(target.constructor.prototype, {
 			type,
 			name: propertyKey,
@@ -54,10 +72,10 @@ export function UploadDecorator({ type, width, height, handlePicture, required =
 
 		for (const decorator of decorators as any[]) {
 			if (target instanceof Function && !descriptor) {
-					decorator(target);
-					continue;
+				decorator(target);
+				continue;
 			}
 			decorator(target, propertyKey, descriptor);
 		}
-	}
+	};
 }

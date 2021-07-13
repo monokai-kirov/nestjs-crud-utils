@@ -4,7 +4,9 @@ import { ArrayNotEmpty, IsArray, IsObject } from 'class-validator';
 
 export function ArrayOfObjectsDecorator(description = '') {
 	return applyDecorators(
-		ApiProperty({ description: `@IsArray(), @ArrayNotEmpty(), @IsObject({ each: true }); ${description}` }),
+		ApiProperty({
+			description: `@IsArray(), @ArrayNotEmpty(), @IsObject({ each: true }); ${description}`,
+		}),
 		IsArray(),
 		ArrayNotEmpty(),
 		IsObject({ each: true }),

@@ -1,18 +1,21 @@
 # Requirements
+
 ```ts
--- postgresql
--- redis
--- sequelize
+--postgresql;
+--redis;
+--sequelize;
 ```
 
 # Install
 
 ## PeerDependencies
+
 ```bash
-npm install --save ioredis @nestjs/sequelize sequelize sequelize-typescript
+npm install --save ioredis @nestjs/sequelize sequelize@~6.5.0 sequelize-typescript
 ```
 
 ## .env.example for docker environment
+
 ```
 NODE_ENV=production
 
@@ -30,6 +33,7 @@ WS_ORIGIN=https://your_incredible_site.com:*
 ```
 
 ## main.ts
+
 ```ts
 // First line of main.ts
 import 'src/app/config';
@@ -37,12 +41,14 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```
 
 ## src/app/config.ts
+
 ```ts
 require('dotenv').config();
 import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```
 
 ### src/app/app.module.ts
+
 ```ts
 import { config } from '@monokai-kirov/nestjs-crud-utils';
 
@@ -51,43 +57,44 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 		SequelizeModule.forRootAsync({
 			useFactory: () => config.getDatabaseOptions() as any, // define defaultScope and underscored: true (you can use your own options but underscored: true is necessary)
 		}),
-	]
+	],
 })
 export class AppModule {}
 ```
-
 
 # Crud example (please import UploadModule for this example)
 
 ## UploadModule
 
 By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+
 ## src/app/app.module.ts
+
 ```ts
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
 
 @Module({
-	imports: [
-		UploadModule.register([
-			SequelizeModule.forFeature([
-				Upload,
-			]),
-		]),
-	],
+	imports: [UploadModule.register([SequelizeModule.forFeature([Upload])])],
 })
 export class AppModule {}
 ```
 
 ## src/admin/models/category.model.ts
+
 ```ts
-import { Column, Model, Table, DataType, /*BelongsToMany*/ } from 'sequelize-typescript';
-import { primaryKeyOptions, Upload, UploadForeignKeyDecorator, UploadBelongsToDecorator, /*ForeignKeyDecorator, BelongsToDecorator*/ } from '@monokai-kirov/nestjs-crud-utils';
+import { Column, Model, Table, DataType /*BelongsToMany*/ } from 'sequelize-typescript';
+import {
+	primaryKeyOptions,
+	Upload,
+	UploadForeignKeyDecorator,
+	UploadBelongsToDecorator /*ForeignKeyDecorator, BelongsToDecorator*/,
+} from '@monokai-kirov/nestjs-crud-utils';
 // import { Direction } from 'src/admin/models/direction.model';
 
 @Table({
 	indexes: [
-		{ fields: ['image_id']},
+		{ fields: ['image_id'] },
 		// { fields: ['direction_id']},
 	],
 })
@@ -99,13 +106,13 @@ export class Category extends Model {
 	title: string;
 
 	@Column({ type: DataType.TEXT, allowNull: true })
-	description: string|null;
+	description: string | null;
 
 	@UploadForeignKeyDecorator()
-	imageId: string|null;
+	imageId: string | null;
 
 	@UploadBelongsToDecorator()
-	image: Upload|null;
+	image: Upload | null;
 
 	/**
 	 * Single linking example
@@ -133,40 +140,50 @@ export class Category extends Model {
 ```
 
 ## src/admin/models/category.direction.model.ts
+
 ```ts
 // import { DateType, Model, Column, ForeignKey, Table } from "sequelize-typescript";
 // import { Category } from "src/admin/models/category.model";
 // import { Direction } from "src/admin/models/direction.model";
 
 // @Table({
-	// indexes: [
-		// { fields: ['category_id', 'direction_id']},
-	// ],
+// indexes: [
+// { fields: ['category_id', 'direction_id']},
+// ],
 // })
 // export class CategoryDirection extends Model {
-	// @ForeignKey(() => Category)
-	// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
-	// categoryId: string;
+// @ForeignKey(() => Category)
+// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+// categoryId: string;
 
-	// @ForeignKey(() => Direction)
-	// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
-	// directionId: string;
+// @ForeignKey(() => Direction)
+// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+// directionId: string;
 // }
 ```
 
 ## src/admin/models/category.dto.ts
+
 ```ts
-import { StringDecorator, OptionalTextDecorator, UploadDecorator, UploadType, UUIDDecorator, ArrayOfUUIDsDecorator, OptionalArrayOfUUIDsDecorator } from "@monokai-kirov/nestjs-crud-utils";
+import {
+	StringDecorator,
+	OptionalTextDecorator,
+	UploadDecorator,
+	UploadType,
+	UUIDDecorator,
+	ArrayOfUUIDsDecorator,
+	OptionalArrayOfUUIDsDecorator,
+} from '@monokai-kirov/nestjs-crud-utils';
 
 export class CategoryDto {
 	@StringDecorator()
 	title: string;
 
 	@OptionalTextDecorator()
-	description: string|null = null;
+	description: string | null = null;
 
 	@UploadDecorator({ type: UploadType.PICTURE, width: 500 })
-	image: string|null = null;
+	image: string | null = null;
 
 	/**
 	 * Single linking example
@@ -193,6 +210,7 @@ export class CategoryDto {
 ```
 
 ## src/admin/services/category.service.ts
+
 ```ts
 import { CrudService, Upload, UploadService } from "@monokai-kirov/nestjs-crud-utils";
 import { Injectable } from "@nestjs/common";
@@ -212,13 +230,14 @@ export class CategoryService extends CrudService<Category> {
 ```
 
 ## src/admin/controllers/category.controller.ts
+
 ```ts
-import { Controller, UseGuards } from "@nestjs/common";
-import { ApiExtraModels, ApiTags } from "@nestjs/swagger";
-import { ApiResponseDecorator } from "@monokai-kirov/nestjs-crud-utils";
-import { CategoryDto } from "../dto/category.dto";
-import { CategoryService } from "../services/category.service";
-import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
+import { Controller, UseGuards } from '@nestjs/common';
+import { ApiExtraModels, ApiTags } from '@nestjs/swagger';
+import { ApiResponseDecorator } from '@monokai-kirov/nestjs-crud-utils';
+import { CategoryDto } from '../dto/category.dto';
+import { CategoryService } from '../services/category.service';
+import { CrudController } from '@monokai-kirov/nestjs-crud-utils';
 
 @ApiTags('Admin categories')
 @ApiExtraModels(CategoryDto)
@@ -227,15 +246,14 @@ import { CrudController } from "@monokai-kirov/nestjs-crud-utils";
 // @UseGuards(JwtAuthGuard)
 @Controller('api/admin/categories')
 export class CategoryController extends CrudController {
-	constructor(
-		private readonly categoryService: CategoryService,
-	) {
+	constructor(private readonly categoryService: CategoryService) {
 		super(categoryService);
 	}
 }
 ```
 
 ## src/admin/admin.module.ts
+
 ```ts
 import { Category } from './models/category.model';
 import { CategoryService } from './services/category.service';
@@ -251,40 +269,37 @@ import { CategoryController } from './controllers/category.controller';
 			// CategoryDirection,
 		]),
 	],
-	controllers: [
-		CategoryController,
-	],
-	providers: [
-		CategoryService,
-	],
+	controllers: [CategoryController],
+	providers: [CategoryService],
 })
 export class AdminModule {}
 ```
 
 ## Inherited from CrudService and EntityService
+
 ```ts
 /**
  * Default options for CrudService
  * export type CrudOptions = {
  *	withDtoValidation: true,
-	*	withRelationValidation: true,
-	*	withUploadValidation: true,
-	*	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
-	*	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
-	*	unscoped: true,
-	*	additionalScopes: ['admin'],
-	*	childModels: [], // for automatically handle inheritance
-	* };
-	*/
+ *	withRelationValidation: true,
+ *	withUploadValidation: true,
+ *	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
+ *	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
+ *	unscoped: true,
+ *	additionalScopes: ['admin'],
+ *	childModels: [], // for automatically handle inheritance
+ * };
+ */
 
 /**
  * Default options for EntityService
  * {
  *	unscoped: false,
-	*	unscopedInclude: false,
-	*	additionalScopes: [],
-	* };
-	*/
+ *	unscopedInclude: false,
+ *	additionalScopes: [],
+ * };
+ */
 ```
 
 ```ts
@@ -456,6 +471,7 @@ getAllAssociations(): any[];
 ```
 
 # Decorators list
+
 ```ts
 @StringDecorator()
 @OptionalStringDecorator()
@@ -513,25 +529,31 @@ getAllAssociations(): any[];
 ```
 
 # Guards
+
 ```ts
-GatewayThrottlerGuard // just an example from the docs
-MutexGuard // TODO: example
-WsMutexGuard // TODO: example
+GatewayThrottlerGuard; // just an example from the docs
+MutexGuard; // TODO: example
+WsMutexGuard; // TODO: example
 ```
 
 # Pipes
+
 ```ts
-NormalizeBeforeValidationPipe
-NormalizeAfterValidationPipe
-OptionalBooleanQueryValidationPipe
-ValidatePagePipe
+NormalizeBeforeValidationPipe;
+NormalizeAfterValidationPipe;
+OptionalBooleanQueryValidationPipe;
+ValidatePagePipe;
 ```
 
 ## Normalize example
+
 ```ts
 // in main.ts
 import { ValidationPipe } from '@nestjs/common';
-import { NormalizeBeforeValidationPipe, NormalizeAfterValidationPipe } from '@monokai-kirov/nestjs-crud-utils';
+import {
+	NormalizeBeforeValidationPipe,
+	NormalizeAfterValidationPipe,
+} from '@monokai-kirov/nestjs-crud-utils';
 
 app.useGlobalPipes(
 	new NormalizeBeforeValidationPipe(), // trim whitespaces recursively, email normalization
@@ -541,6 +563,7 @@ app.useGlobalPipes(
 ```
 
 # Interceptors
+
 ```ts
 ReleaseMutexInterceptor // TODO: example
 ReleaseWsMutexInterceptor // TODO: example
@@ -548,14 +571,15 @@ TransactionInterceptor (description below)
 ```
 
 ## Transactions and websocket gateway example
+
 ```bash
 npm install cls-hooked
 ```
 
 ```ts
 // in main.ts
-import { createNamespace } from "cls-hooked";
-import { Sequelize } from "sequelize-typescript"
+import { createNamespace } from 'cls-hooked';
+import { Sequelize } from 'sequelize-typescript';
 const namespace = createNamespace('sequelize-cls-namespace');
 (Sequelize as any).__proto__.useCLS(namespace);
 
@@ -580,6 +604,7 @@ export class EventsGateway {}
 ```
 
 # Filters
+
 ```ts
 AllExceptionsFilter
 AllWsExceptionsFilter (fixes nestjs + class-validator 500 internal server error bug)

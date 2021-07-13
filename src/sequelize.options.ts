@@ -1,4 +1,4 @@
-import { DataType, Sequelize } from "sequelize-typescript";
+import { DataType, Sequelize } from 'sequelize-typescript';
 
 export const primaryKeyOptions: any = {
 	primaryKey: true,
@@ -13,4 +13,3 @@ export const defaultScopeOptions: any = {
 		['updatedAt', 'DESC'],
 	],
 };
-

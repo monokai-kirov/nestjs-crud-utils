@@ -2,7 +2,5 @@ import { applyDecorators, CacheInterceptor, UseInterceptors } from '@nestjs/comm
 import { config } from '../config';
 
 export function CacheDecorator() {
-	return applyDecorators(
-		UseInterceptors(...(config.isProduction() ? [CacheInterceptor] : []))
-	);
+	return applyDecorators(UseInterceptors(...(config.isProduction() ? [CacheInterceptor] : [])));
 }

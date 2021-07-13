@@ -1,33 +1,50 @@
-import { isEmpty } from "class-validator";
-import { Op } from "sequelize";
-import { Sequelize, Model } from "sequelize-typescript";
-import { Upload } from "../../upload/models/upload.model";
+import { isEmpty } from 'class-validator';
+import { Op } from 'sequelize';
+import { Sequelize, Model } from 'sequelize-typescript';
+import { Upload } from '../../upload/models/upload.model';
 import { correctionService, CorrectionService } from './correction.service';
-import { validationService, ValidationService } from "./validation.service";
+import { validationService, ValidationService } from './validation.service';
 
 export type EntityOptions = {
-	unscoped?: boolean,
-	unscopedInclude?: boolean,
-	additionalScopes?: string[],
-}
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+};
 
 export type Include = { all: boolean } | Object[];
 
 export class EntityService<T> {
 	public get crudModel(): Model {
-		return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
+		return this.correctionService.unscopedHelper(
+			this,
+			this.entityOptions.unscoped,
+			this.entityOptions.additionalScopes,
+		);
 	}
-	public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
-	public get tableName() : string { return this.__crudModel__.getTableName() };
-	public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
-	public getMaxEntitiesPerPage() : number { return 30; }
+	public get entityName(): string {
+		return this.__crudModel__.prototype.constructor.name;
+	}
+	public get tableName(): string {
+		return this.__crudModel__.getTableName();
+	}
+	public getEntityNameByModel(model?): string {
+		return model ? model.prototype.constructor.name : this.entityName;
+	}
+	public getMaxEntitiesPerPage(): number {
+		return 30;
+	}
 
 	/**
 	 * @Override
 	 */
-	protected getIncludeOptions(): Include { return []; }
-	protected getSearchingProps(): Array<string|string[]|{ property: string|string[], transform: Function }> { return ['id', 'title']; }
-
+	protected getIncludeOptions(): Include {
+		return [];
+	}
+	protected getSearchingProps(): Array<
+		string | string[] | { property: string | string[]; transform: Function }
+	> {
+		return ['id', 'title'];
+	}
 
 	public static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {
 		unscoped: false,
@@ -70,18 +87,18 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		search?: string,
-		where?: Object,
-		include?: Include,
-		offset?: number,
-		limit?: number,
-		page?: number,
-		order?: any[],
-		unscoped?: boolean,
-		unscopedInclude?: boolean,
-		additionalScopes?: string[],
-		[key: string]: any,
-	} = {}): Promise<{ entities: T[], totalCount: number }> {
+		search?: string;
+		where?: Object;
+		include?: Include;
+		offset?: number;
+		limit?: number;
+		page?: number;
+		order?: any[];
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<{ entities: T[]; totalCount: number }> {
 		const findOptions = {
 			where,
 			include,
@@ -102,7 +119,8 @@ export class EntityService<T> {
 			transformedOffset = (page - 1) * limit;
 			transformedLimit = limit;
 		} else {
-			({ offset: transformedOffset, limit: transformedLimit } = this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount));
+			({ offset: transformedOffset, limit: transformedLimit } =
+				this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount));
 		}
 
 		return {
@@ -123,7 +141,7 @@ export class EntityService<T> {
 			let property = option;
 			let value = search;
 
-			if ((typeof option === 'object' && option !== null)) {
+			if (typeof option === 'object' && option !== null) {
 				if (option['property']) {
 					property = option['property'];
 				}
@@ -134,21 +152,27 @@ export class EntityService<T> {
 
 			const getFinalProperty = (property) => {
 				if (property.includes('.')) {
-						return property.split('.').map(v => `"${v}"`).join('.');
+					return property
+						.split('.')
+						.map((v) => `"${v}"`)
+						.join('.');
 				} else {
-						return `"${this.__crudModel__.name}"."${property}"`;
+					return `"${this.__crudModel__.name}"."${property}"`;
 				}
 			};
 
 			if (value) {
 				searchWhere.push(
 					Sequelize.where(
-						(Array.isArray(property)
-							? Sequelize.fn('concat', ...property
-								.map(v => Sequelize.cast(Sequelize.col(getFinalProperty(v)), 'text'))
-								.reduce((acc, v) => acc.concat(v, ' '), []))
-							: Sequelize.cast(Sequelize.col(getFinalProperty(property)), 'text')),
-						{[Op.iLike]: `%${value}%`} as any
+						Array.isArray(property)
+							? Sequelize.fn(
+									'concat',
+									...property
+										.map((v) => Sequelize.cast(Sequelize.col(getFinalProperty(v)), 'text'))
+										.reduce((acc, v) => acc.concat(v, ' '), []),
+							  )
+							: Sequelize.cast(Sequelize.col(getFinalProperty(property)), 'text'),
+						{ [Op.iLike]: `%${value}%` } as any,
 					),
 				);
 			}
@@ -163,23 +187,21 @@ export class EntityService<T> {
 		}
 	}
 
-	public async findOne(
-		{
-			where = {},
-			include = this.getIncludeOptions(),
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-			...args
-		}: {
-			where?: Object,
-			include?: Include,
-			unscoped?: boolean,
-			unscopedInclude?: boolean,
-			additionalScopes?: string[],
-			[key: string]: any,
-		} = {}
-	): Promise<T|null> {
+	public async findOne({
+		where = {},
+		include = this.getIncludeOptions(),
+		unscoped = this.entityOptions.unscoped,
+		unscopedInclude = this.entityOptions.unscopedInclude,
+		additionalScopes = this.entityOptions.additionalScopes,
+		...args
+	}: {
+		where?: Object;
+		include?: Include;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<T | null> {
 		if (!Object.keys(where).length) {
 			throw new Error('Укажите where');
 		}
@@ -201,14 +223,14 @@ export class EntityService<T> {
 			additionalScopes = this.entityOptions.additionalScopes,
 			...args
 		}: {
-			where?: Object,
-			include?: Include,
-			unscoped?: boolean,
-			unscopedInclude?: boolean,
-			additionalScopes?: string[],
-			[key: string]: any,
-		} = {}
-	): Promise<T|null> {
+			where?: Object;
+			include?: Include;
+			unscoped?: boolean;
+			unscopedInclude?: boolean;
+			additionalScopes?: string[];
+			[key: string]: any;
+		} = {},
+	): Promise<T | null> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findOne({
 			where: {
 				id,
@@ -228,13 +250,13 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		where?: Object,
-		include?: Include,
-		order?: any[],
-		unscoped?: boolean,
-		unscopedInclude?: boolean,
-		additionalScopes?: string[],
-		[key: string]: any,
+		where?: Object;
+		include?: Include;
+		order?: any[];
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
 	} = {}): Promise<T[]> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findAll({
 			where,
@@ -255,14 +277,14 @@ export class EntityService<T> {
 			additionalScopes = this.entityOptions.additionalScopes,
 			...args
 		}: {
-			where?: Object,
-			include?: Include,
-			order?: any[],
-			unscoped?: boolean,
-			unscopedInclude?: boolean,
-			additionalScopes?: string[],
-			[key: string]: any,
-		} = {}
+			where?: Object;
+			include?: Include;
+			order?: any[];
+			unscoped?: boolean;
+			unscopedInclude?: boolean;
+			additionalScopes?: string[];
+			[key: string]: any;
+		} = {},
 	): Promise<T[]> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findAll({
 			where: {
@@ -285,18 +307,24 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		where?: Object,
-		include?: Include,
-		unscoped?: boolean,
-		unscopedInclude?: boolean,
-		additionalScopes?: string[],
-		[key: string]: any,
+		where?: Object;
+		include?: Include;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
 	} = {}): Promise<number> {
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).count({
 			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where, true),
+			include: this.correctionService.getCorrectInclude(
+				this,
+				unscopedInclude,
+				include,
+				where,
+				true,
+			),
 			distinct: true,
-		...args,
+			...args,
 		});
 	}
 
@@ -307,56 +335,99 @@ export class EntityService<T> {
 		return this.validationService.validateDto(dtoType, dto, whitelist);
 	}
 
-	public async validateMandatoryId(id: string, {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-	} = {}): Promise<T> {
-		return this.validationService.validateMandatoryId(this, id, { where, include, model, unscoped, unscopedInclude, additionalScopes });
+	public async validateMandatoryId(
+		id: string,
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<T> {
+		return this.validationService.validateMandatoryId(this, id, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
 	}
 
-	public async validateOptionalId(id: string, {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-	} = {}): Promise<T|void> {
-		return this.validationService.validateOptionalId(this, id, { where, include, model, unscoped, unscopedInclude, additionalScopes });
+	public async validateOptionalId(
+		id: string,
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<T | void> {
+		return this.validationService.validateOptionalId(this, id, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
 	}
 
-	public async validateMandatoryIds(ids: string[], {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-	} = {}) {
-		return this.validationService.validateMandatoryIds(this, ids, { where, include, model, unscoped, unscopedInclude, additionalScopes });
+	public async validateMandatoryIds(
+		ids: string[],
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	) {
+		return this.validationService.validateMandatoryIds(this, ids, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
 	}
 
-	public async validateOptionalIds(ids: string[], {
-		where = {},
-		include = [],
-		model = null,
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-	} = {}) {
-		return this.validationService.validateOptionalIds(this, ids, { where, include, model, unscoped, unscopedInclude, additionalScopes });
+	public async validateOptionalIds(
+		ids: string[],
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	) {
+		return this.validationService.validateOptionalIds(this, ids, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
 	}
 
 	/**
 	 * Relations
 	 */
-	public getSingleRelations(model?): Array<{ name: string, model: Model }> {
+	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(([key, value]: any) => value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload)
+			.filter(
+				([key, value]: any) =>
+					value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload,
+			)
 			.map(([key, value]: any) => {
 				return {
 					name: key,
@@ -365,9 +436,13 @@ export class EntityService<T> {
 			});
 	}
 
-	public getMultipleRelations(model?): Array<{ name: string, model: Model }> {
+	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(([key, value]: any) => ['BelongsToMany', 'HasMany'].includes(value.associationType) && value.target.prototype.constructor !== Upload)
+			.filter(
+				([key, value]: any) =>
+					['BelongsToMany', 'HasMany'].includes(value.associationType) &&
+					value.target.prototype.constructor !== Upload,
+			)
 			.map(([key, value]: any) => {
 				return {
 					name: key,
@@ -378,37 +453,50 @@ export class EntityService<T> {
 
 	public getUploadRelations(model?): string[] {
 		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(([key, value]: any) =>
-				['BelongsTo', 'BelongsToMany'].includes(value.associationType)
-					&& value.target.prototype.constructor === Upload)
+			.filter(
+				([key, value]: any) =>
+					['BelongsTo', 'BelongsToMany'].includes(value.associationType) &&
+					value.target.prototype.constructor === Upload,
+			)
 			.map(([key, value]: any) => key);
 	}
 
 	public getAllAssociations() {
-		return Object.entries(this.__crudModel__.associations)
-			.map(([key, value]: [any, any]) => {
-				return value.target.prototype.constructor;
-			});
+		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
+			return value.target.prototype.constructor;
+		});
 	}
 
 	public checkIncludeOptions() {
 		const include = <any>this.getIncludeOptions();
 		if (isEmpty(include.all)) {
-			include.forEach(child => this.checkIncludeOptionsHelper(this.__crudModel__.prototype.constructor, child));
+			include.forEach((child) =>
+				this.checkIncludeOptionsHelper(this.__crudModel__.prototype.constructor, child),
+			);
 		}
 	}
 
 	private checkIncludeOptionsHelper(parent, child) {
 		const childModel = child.model ?? child;
-		const associations = Object.entries(parent.associations).map(([key, value]) => (value as any).target);
+		const associations = Object.entries(parent.associations).map(
+			([key, value]) => (value as any).target,
+		);
 
-		const associationWithSameTableName = associations.find(v => v.getTableName() === childModel.getTableName());
+		const associationWithSameTableName = associations.find(
+			(v) => v.getTableName() === childModel.getTableName(),
+		);
 		if (!associations.includes(childModel) && !associationWithSameTableName) {
-			throw new Error(`Please check method getIncludeOptions() on model ${this.entityName}, link ${this.getEntityNameByModel(parent)} with ${this.getEntityNameByModel(childModel)} doesn't exist`);
+			throw new Error(
+				`Please check method getIncludeOptions() on model ${
+					this.entityName
+				}, link ${this.getEntityNameByModel(parent)} with ${this.getEntityNameByModel(
+					childModel,
+				)} doesn't exist`,
+			);
 		}
 
 		if (child.include) {
-			child.include.forEach(subChild => this.checkIncludeOptionsHelper(childModel, subChild));
+			child.include.forEach((subChild) => this.checkIncludeOptionsHelper(childModel, subChild));
 		}
 	}
 }

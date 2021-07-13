@@ -4,7 +4,7 @@ import { Transform } from 'class-transformer';
 import { isInt, IsNotEmpty } from 'class-validator';
 
 export function IntDecorator() {
-	return function(target, propertyKey, descriptor?) {
+	return function (target, propertyKey, descriptor?) {
 		const decorators = [
 			ApiProperty({ description: '@IsInt()' }),
 			IsNotEmpty(),
@@ -21,15 +21,15 @@ export function IntDecorator() {
 					}
 					return value;
 				}
-			})
+			}),
 		];
 
 		for (const decorator of decorators as any[]) {
 			if (target instanceof Function && !descriptor) {
-					decorator(target);
-					continue;
+				decorator(target);
+				continue;
 			}
 			decorator(target, propertyKey, descriptor);
 		}
-	}
+	};
 }

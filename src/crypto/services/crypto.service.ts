@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
@@ -6,7 +6,7 @@ const crypto = require('crypto');
 export class CryptoService {
 	public async checkPassword(password: string, dbPasswordHash: string): Promise<boolean> {
 		return await new Promise((resolve, reject) => {
-			bcrypt.compare(password, dbPasswordHash, function(err, result) {
+			bcrypt.compare(password, dbPasswordHash, function (err, result) {
 				if (err) reject(err);
 				resolve(<boolean>result);
 			});
@@ -16,7 +16,7 @@ export class CryptoService {
 	public async hashPassword(password: string): Promise<string> {
 		const saltRounds = 10;
 		return <string>await new Promise((resolve, reject) => {
-			bcrypt.hash(password, saltRounds, function(err, hash) {
+			bcrypt.hash(password, saltRounds, function (err, hash) {
 				if (err) reject(err);
 				resolve(hash);
 			});

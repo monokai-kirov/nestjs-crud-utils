@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import { config } from "../../config";
-import createSubscriber from "pg-listen";
+import { Injectable } from '@nestjs/common';
+import { config } from '../../config';
+import createSubscriber from 'pg-listen';
 
 @Injectable()
 export class PgService {
@@ -11,8 +11,12 @@ export class PgService {
 		this.subscriber = createSubscriber({
 			connectionString: `postgres://${options.username}:${options.password}@${options.host}:${options.port}/${options.database}`,
 		});
-		this.subscriber.events.on('error', (error) => { process.exit(1) });
-		process.on('exit', () => { this.subscriber.close(); });
+		this.subscriber.events.on('error', (error) => {
+			process.exit(1);
+		});
+		process.on('exit', () => {
+			this.subscriber.close();
+		});
 		this.subscriber.connect();
 	}
 

@@ -1,11 +1,11 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/sequelize";
-import { Op } from "sequelize";
-import { EntityService } from "../../crud/services/entity.service";
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { Op } from 'sequelize';
+import { EntityService } from '../../crud/services/entity.service';
 import { SmsRequest } from '../models/sms.request.model';
-import { config } from "../../config";
-import { utils } from "../../utils";
-import { ConfigService } from "@nestjs/config";
+import { config } from '../../config';
+import { utils } from '../../utils';
+import { ConfigService } from '@nestjs/config';
 const SMSru = require('sms_ru');
 
 export interface SmsResponse {
@@ -30,11 +30,11 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 		from,
 		phone,
 		message,
-	} : {
-		req,
-		from: string,
-		phone: string,
-		message: string,
+	}: {
+		req;
+		from: string;
+		phone: string;
+		message: string;
 	}): Promise<SmsResponse> {
 		try {
 			if (config.isProduction()) {
@@ -54,17 +54,20 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 	private async sendHelper(from: string, phone: string, message: string) {
 		const sms = new SMSru(this.configService.get('SMS_API_ID'));
 		return new Promise((resolve, reject) => {
-			sms.sms_send({
-				to: utils.normalizePhone(phone),
-				text: message,
-				from,
-			}, function(result, errorMessage) {
-				if (result) {
-					resolve(result);
-				} else {
-					reject(new Error(errorMessage));
-				}
-			});
+			sms.sms_send(
+				{
+					to: utils.normalizePhone(phone),
+					text: message,
+					from,
+				},
+				function (result, errorMessage) {
+					if (result) {
+						resolve(result);
+					} else {
+						reject(new Error(errorMessage));
+					}
+				},
+			);
 		});
 	}
 
@@ -74,10 +77,7 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 
 		await this.smsRequestModel.destroy({
 			where: {
-				[Op.or]: [
-					{ ipAddress: utils.getIpAddressFromRequest(req) },
-					{ hash: this.getHash(req) },
-				],
+				[Op.or]: [{ ipAddress: utils.getIpAddressFromRequest(req) }, { hash: this.getHash(req) }],
 				createdAt: {
 					[Op.lt]: todayMidnight,
 				},
@@ -91,7 +91,6 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 		await smsRequest.save();
 	}
 
-
 	public async validateRequest(req): Promise<void> {
 		const todayMidnight = new Date();
 		todayMidnight.setHours(0, 0, 0, 0);
@@ -100,10 +99,7 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 
 		const requestsCount = await this.count({
 			where: {
-				[Op.or]: [
-					{ ipAddress: utils.getIpAddressFromRequest(req) },
-					{ hash: this.getHash(req) },
-				],
+				[Op.or]: [{ ipAddress: utils.getIpAddressFromRequest(req) }, { hash: this.getHash(req) }],
 				createdAt: {
 					[Op.between]: [todayMidnight, tomorrowMidnight],
 				},

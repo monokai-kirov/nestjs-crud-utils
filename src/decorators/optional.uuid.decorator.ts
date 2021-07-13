@@ -7,6 +7,6 @@ export function OptionalUUIDDecorator() {
 		ApiPropertyOptional(),
 		ApiProperty({ description: `@IsOptional(), @IsUUID('4')` }),
 		IsOptional(),
-		IsUUID('4')
+		IsUUID('4'),
 	);
 }

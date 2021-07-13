@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-const nodemailer = require("nodemailer");
+const nodemailer = require('nodemailer');
 
 type EmailOptions = {
-	from: string,
-	to: string,
-	subject: string,
-	text: string,
-	html: string,
+	from: string;
+	to: string;
+	subject: string;
+	text: string;
+	html: string;
 };
 
 export interface EmailSendingResponse {
@@ -18,9 +18,7 @@ export interface EmailSendingResponse {
 export class EmailService {
 	private transporter;
 
-	constructor(
-		private readonly configService: ConfigService,
-	) {
+	constructor(private readonly configService: ConfigService) {
 		this.transporter = nodemailer.createTransport({
 			host: 'smtp.yandex.ru',
 			port: 465,
@@ -28,7 +26,7 @@ export class EmailService {
 			auth: {
 				user: configService.get('EMAIL_LOGIN'),
 				pass: configService.get('EMAIL_PASSWORD'),
-			}
+			},
 		});
 	}
 
@@ -37,9 +35,9 @@ export class EmailService {
 		title,
 		message,
 	}: {
-		email: string,
-		title: string,
-		message: string,
+		email: string;
+		title: string;
+		message: string;
 	}): Promise<EmailSendingResponse> {
 		try {
 			await this.transporter.sendMail(this.generateOptions({ email, title, message }));
@@ -58,9 +56,9 @@ export class EmailService {
 		title,
 		message,
 	}: {
-		email: string,
-		title: string,
-		message: string,
+		email: string;
+		title: string;
+		message: string;
 	}): EmailOptions {
 		return {
 			from: this.configService.get('EMAIL_LOGIN'),

@@ -1,8 +1,8 @@
-import { isPhoneNumber } from "class-validator";
-import { config } from "./config";
+import { isPhoneNumber } from 'class-validator';
+import { config } from './config';
 import { Mutex } from 'redis-semaphore';
-import { HttpException } from "@nestjs/common";
-import { plainToClass } from "class-transformer";
+import { HttpException } from '@nestjs/common';
+import { plainToClass } from 'class-transformer';
 
 class Utils {
 	public normalizeBeforeValidation(obj) {
@@ -24,18 +24,23 @@ class Utils {
 			return value;
 		});
 
-		if (obj !== null && (typeof obj === 'object' && !Array.isArray(obj)) && obj?.constructor?.prototype) {
+		if (
+			obj !== null &&
+			typeof obj === 'object' &&
+			!Array.isArray(obj) &&
+			obj?.constructor?.prototype
+		) {
 			return plainToClass(obj.constructor, result);
 		}
 		return result;
 	}
 
 	private normalizeHelper(obj, callback: Function) {
-		if (obj === null || (!Array.isArray(obj) && typeof obj !== 'object') || obj instanceof Buffer) return obj;
+		if (obj === null || (!Array.isArray(obj) && typeof obj !== 'object') || obj instanceof Buffer)
+			return obj;
 
-		return Object
-			.keys(obj)
-			.reduce((accumulator, key) => {
+		return Object.keys(obj).reduce(
+			(accumulator, key) => {
 				let value = obj[key];
 				let result;
 
@@ -46,7 +51,8 @@ class Utils {
 				}
 				accumulator[key.trim()] = result;
 				return accumulator;
-			}, Array.isArray(obj) ? [] : {}
+			},
+			Array.isArray(obj) ? [] : {},
 		);
 	}
 
@@ -56,7 +62,7 @@ class Utils {
 			if (isPhoneNumber(phone, 'RU') && result[0] === '8') {
 				result = `7${result.slice(1)}`;
 			}
-			return `+${result}`
+			return `+${result}`;
 		}
 		return result;
 	}
@@ -71,15 +77,15 @@ class Utils {
 	}
 
 	public getEnumValues(inputEnum) {
-		return Object.keys(inputEnum).map(k => inputEnum[k as any]);
+		return Object.keys(inputEnum).map((k) => inputEnum[k as any]);
 	}
 
 	public getIpAddressFromRequest(req) {
 		return (
-			Array.isArray(req.headers['x-forwarded-for'])
+			(Array.isArray(req.headers['x-forwarded-for'])
 				? req.headers['x-forwarded-for'][0]
-				: req.headers['x-forwarded-for']
-			) || req.connection.remoteAddress;
+				: req.headers['x-forwarded-for']) || req.connection.remoteAddress
+		);
 	}
 
 	public async acquireMutex(mutexStore, key: string, keyStore = mutexStore) {
@@ -116,7 +122,7 @@ class Utils {
 	}
 
 	public camelToSnakeCase(str) {
-		return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+		return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 	}
 
 	public camelToSnakeCaseWithUpper(str) {
@@ -124,16 +130,11 @@ class Utils {
 	}
 
 	public snakeCaseToCamel(str) {
-		return str.includes('_') ? str
-			.toLowerCase()
-			.replace(
-				/([-_][a-z])/g,
-				(group) =>
-					group
-						.toUpperCase()
-						.replace('-', '')
-						.replace('_', '')
-			) : str;
+		return str.includes('_')
+			? str
+					.toLowerCase()
+					.replace(/([-_][a-z])/g, (group) => group.toUpperCase().replace('-', '').replace('_', ''))
+			: str;
 	}
 }
 

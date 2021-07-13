@@ -1,11 +1,11 @@
-import { Injectable } from "@nestjs/common";
-import { Upload } from "../models/upload.model";
-import { InjectConnection } from "@nestjs/sequelize";
-import { Sequelize } from "sequelize-typescript";
-import { PgService } from "./pg.service";
-import { config } from "../../config";
-import { QueryTypes } from "sequelize";
-import { UploadService, uploadTriggerModels } from "./upload.service";
+import { Injectable } from '@nestjs/common';
+import { Upload } from '../models/upload.model';
+import { InjectConnection } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
+import { PgService } from './pg.service';
+import { config } from '../../config';
+import { QueryTypes } from 'sequelize';
+import { UploadService, uploadTriggerModels } from './upload.service';
 
 @Injectable()
 export class UploadTriggerService {
@@ -31,7 +31,8 @@ export class UploadTriggerService {
 	}
 
 	private async removeTriggersAndFunctions() {
-		const triggers = await this.sequelize.query(`
+		const triggers = await this.sequelize.query(
+			`
 			SELECT
 				event_object_schema as table_schema,
 				event_object_table as table_name,
@@ -40,22 +41,32 @@ export class UploadTriggerService {
 			WHERE trigger_name like '%_removing_trigger'
 			GROUP BY 1,2,3
 			ORDER BY table_schema, table_name;
-		`.trim(), { type: QueryTypes.SELECT });
+		`.trim(),
+			{ type: QueryTypes.SELECT },
+		);
 
 		let dropTriggerQuery = '';
-		triggers.forEach((v: any) => dropTriggerQuery += `DROP TRIGGER IF EXISTS ${v.trigger_name} on "${v.table_schema}"."${v.table_name}";`);
+		triggers.forEach(
+			(v: any) =>
+				(dropTriggerQuery += `DROP TRIGGER IF EXISTS ${v.trigger_name} on "${v.table_schema}"."${v.table_name}";`),
+		);
 		await this.sequelize.query(dropTriggerQuery);
 
-		const functions = await this.sequelize.query(`
+		const functions = await this.sequelize.query(
+			`
 			SELECT p.proname AS function_name
 			FROM pg_proc p
 				LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 			WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') and p.proname like '%_before_delete'
 			ORDER BY function_name;
-		`.trim(), { type: QueryTypes.SELECT });
+		`.trim(),
+			{ type: QueryTypes.SELECT },
+		);
 
 		let dropFunctionQuery = '';
-		functions.forEach((v: any) => dropFunctionQuery += `DROP FUNCTION IF EXISTS ${v.function_name} CASCADE;`);
+		functions.forEach(
+			(v: any) => (dropFunctionQuery += `DROP FUNCTION IF EXISTS ${v.function_name} CASCADE;`),
+		);
 		await this.sequelize.query(dropFunctionQuery);
 	}
 
@@ -63,14 +74,17 @@ export class UploadTriggerService {
 		const tableName = Upload.getTableName();
 		const eventName = `${tableName}_removing_event`;
 
-		await this.createTrigger(String(tableName), `
+		await this.createTrigger(
+			String(tableName),
+			`
 			PERFORM pg_notify('${eventName}', '{
 				"table": "' || TG_TABLE_NAME || '",
 				"action": "delete",
 				"row":' || row_to_json(OLD)::text ||
 			'}');
 			RETURN OLD;
-		`.trim());
+		`.trim(),
+		);
 
 		this.pgService.addEventListener(eventName, async (payload) => {
 			await this.removeUpload(payload.row);
@@ -87,25 +101,35 @@ export class UploadTriggerService {
 		const uploadKeys: Set<string> = new Set();
 
 		Object.entries(crudModel.rawAttributes)
-			.filter(([key, value]: any) => value.references && value.references.model === Upload.getTableName())
+			.filter(
+				([key, value]: any) => value.references && value.references.model === Upload.getTableName(),
+			)
 			.forEach(([key, value]: any) => {
 				uploadKeys.add(value.field);
 			});
 
 		if (uploadKeys.size) {
-			await this.createTrigger(tableName, `${[...uploadKeys]
-				.map(key => `EXECUTE 'DELETE FROM ${Upload.getTableName()} WHERE id=$1' USING OLD.${key};`)
-				.join(' ')
-			}
-			RETURN OLD;`);
+			await this.createTrigger(
+				tableName,
+				`${[...uploadKeys]
+					.map(
+						(key) => `EXECUTE 'DELETE FROM ${Upload.getTableName()} WHERE id=$1' USING OLD.${key};`,
+					)
+					.join(' ')}
+			RETURN OLD;`,
+			);
 		}
 	}
 
 	private async createRemovingTriggersForManyToManyTables(crudModel) {
-		const tables: Array<{ tableName: string, uploadKeys: string[]}> = [];
+		const tables: Array<{ tableName: string; uploadKeys: string[] }> = [];
 
 		Object.entries(crudModel.associations)
-			.filter(([key, value]: any) => (value.associationType === 'BelongsToMany' && value.target.prototype.constructor === Upload))
+			.filter(
+				([key, value]: any) =>
+					value.associationType === 'BelongsToMany' &&
+					value.target.prototype.constructor === Upload,
+			)
 			.forEach(([key, value]: any) => {
 				const keys: Set<string> = new Set();
 
@@ -125,11 +149,16 @@ export class UploadTriggerService {
 
 		if (tables.length) {
 			for (let { tableName, uploadKeys } of tables) {
-				await this.createTrigger(tableName, `${uploadKeys
-					.map(key => `EXECUTE 'DELETE FROM ${Upload.getTableName()} WHERE id=$1' USING OLD.${key};`)
-					.join(' ')
-				}
-				RETURN OLD;`);
+				await this.createTrigger(
+					tableName,
+					`${uploadKeys
+						.map(
+							(key) =>
+								`EXECUTE 'DELETE FROM ${Upload.getTableName()} WHERE id=$1' USING OLD.${key};`,
+						)
+						.join(' ')}
+				RETURN OLD;`,
+				);
 			}
 		}
 	}

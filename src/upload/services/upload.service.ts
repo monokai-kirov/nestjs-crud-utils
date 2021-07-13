@@ -1,12 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 import { MulterFile } from '../types/multer.file.type';
-import { CryptoService } from "../../crypto/services/crypto.service";
-import { UploadValidationService } from "./upload.validation.service";
-import { Upload, UploadStatus } from "../models/upload.model";
-import { InjectModel } from "@nestjs/sequelize";
-import { Op } from "sequelize";
-import { utils } from "../../utils";
-import { config } from "../../config";
+import { CryptoService } from '../../crypto/services/crypto.service';
+import { UploadValidationService } from './upload.validation.service';
+import { Upload, UploadStatus } from '../models/upload.model';
+import { InjectModel } from '@nestjs/sequelize';
+import { Op } from 'sequelize';
+import { utils } from '../../utils';
+import { config } from '../../config';
 const path = require('path');
 const fs = require('fs');
 const fsExtra = require('fs-extra');
@@ -18,7 +18,7 @@ const ffmpeg_static = require('ffmpeg-static');
 
 export type UploadParam = {
 	name: string;
-	type: UploadType|UploadType[];
+	type: UploadType | UploadType[];
 	minCount?: number;
 	maxCount?: number;
 	width?: number;
@@ -31,7 +31,7 @@ export enum UploadType {
 	AUDIO = 'AUDIO',
 	VIDEO = 'VIDEO',
 	DOCUMENT = 'DOCUMENT',
-};
+}
 
 export const uploadTriggerModels = [];
 
@@ -53,15 +53,24 @@ export class UploadService {
 		minCount = 0,
 		maxCount = Infinity,
 	}: {
-		propName: string,
-		type: UploadType|UploadType[],
-		files,
-		dto?,
-		entity?: any|null,
-		minCount?: number,
-		maxCount?: number,
+		propName: string;
+		type: UploadType | UploadType[];
+		files;
+		dto?;
+		entity?: any | null;
+		minCount?: number;
+		maxCount?: number;
 	}) {
-		await this.uploadValidationService.validateRequest({ context: this, propName, type, files, dto, entity, minCount, maxCount });
+		await this.uploadValidationService.validateRequest({
+			context: this,
+			propName,
+			type,
+			files,
+			dto,
+			entity,
+			minCount,
+			maxCount,
+		});
 	}
 
 	public async createOrUpdate({
@@ -75,47 +84,52 @@ export class UploadService {
 		uploadFolder = config.getUploadOptions().folders[0],
 		withoutLinking = false,
 	}: {
-		propName: string,
-		files,
-		dto?,
-		entity,
-		width?: number,
-		height?: number,
-		handlePicture?: (sharp) => any,
-		uploadFolder?: string,
-		withoutLinking?: boolean,
+		propName: string;
+		files;
+		dto?;
+		entity;
+		width?: number;
+		height?: number;
+		handlePicture?: (sharp) => any;
+		uploadFolder?: string;
+		withoutLinking?: boolean;
 	}) {
-		const {
-			existingFiles,
-			isMultiple,
-			handledRemainingFilesIds,
-			handledWaitingForLinkingIds,
-		} = await this.getExistingAndRemaining({ entity, propName, remainingFilesIds: dto[propName] });
+		const { existingFiles, isMultiple, handledRemainingFilesIds, handledWaitingForLinkingIds } =
+			await this.getExistingAndRemaining({ entity, propName, remainingFilesIds: dto[propName] });
 
 		let handledWaitingForLinkingEntities = [];
 		if (handledWaitingForLinkingIds.length) {
 			const [_, handledWaitingForLinkingEntitiesResponse] = await this.uploadModel.update(
 				{ status: UploadStatus.LINKED },
 				{
-					where: { id: { [Op.in]: handledWaitingForLinkingIds }, status: UploadStatus.WAIT_FOR_LINKING },
+					where: {
+						id: { [Op.in]: handledWaitingForLinkingIds },
+						status: UploadStatus.WAIT_FOR_LINKING,
+					},
 					returning: true,
-			});
+				},
+			);
 			handledWaitingForLinkingEntities = handledWaitingForLinkingEntitiesResponse;
 		}
 
 		const filesForSave = [
-			...await this.removeUnnecessaryFilesAndGetRemaining(existingFiles, handledRemainingFilesIds),
+			...(await this.removeUnnecessaryFilesAndGetRemaining(
+				existingFiles,
+				handledRemainingFilesIds,
+			)),
 			...handledWaitingForLinkingEntities,
-			...await Promise.all(
-				(files[propName] ?? []).map(async (newFile) => this.createOrUpdateHelper({ uploadFolder, file: newFile, width, height, handlePicture }))
-			),
+			...(await Promise.all(
+				(files[propName] ?? []).map(async (newFile) =>
+					this.createOrUpdateHelper({ uploadFolder, file: newFile, width, height, handlePicture }),
+				),
+			)),
 		];
 
-		return (
-			withoutLinking
-				? isMultiple ? filesForSave : filesForSave[0]
-				: await entity[`set${utils.ucFirst(propName)}`](isMultiple ? filesForSave : filesForSave[0])
-		);
+		return withoutLinking
+			? isMultiple
+				? filesForSave
+				: filesForSave[0]
+			: await entity[`set${utils.ucFirst(propName)}`](isMultiple ? filesForSave : filesForSave[0]);
 	}
 
 	public async getExistingAndRemaining({
@@ -123,40 +137,53 @@ export class UploadService {
 		propName,
 		remainingFilesIds,
 	}: {
-		entity: any|null,
-		propName: string,
-		remainingFilesIds: string|string[]|null|undefined,
+		entity: any | null;
+		propName: string;
+		remainingFilesIds: string | string[] | null | undefined;
 	}) {
 		let existingFiles = entity ? await entity[`get${utils.ucFirst(propName)}`]() : [];
 		const isMultiple = Array.isArray(existingFiles);
-		existingFiles = (
-			existingFiles ? (Array.isArray(existingFiles) ? existingFiles : [existingFiles]) : []
-		);
-		let handledRemainingFilesIds = (
-			remainingFilesIds ? (Array.isArray(remainingFilesIds) ? remainingFilesIds : [remainingFilesIds]) : []
-		);
+		existingFiles = existingFiles
+			? Array.isArray(existingFiles)
+				? existingFiles
+				: [existingFiles]
+			: [];
+		let handledRemainingFilesIds = remainingFilesIds
+			? Array.isArray(remainingFilesIds)
+				? remainingFilesIds
+				: [remainingFilesIds]
+			: [];
 
-		const existingFilesIds = existingFiles.map(item => item.id);
+		const existingFilesIds = existingFiles.map((item) => item.id);
 		return {
 			existingFiles,
 			isMultiple,
-			handledRemainingFilesIds: handledRemainingFilesIds.filter(item => existingFilesIds.includes(item)),
-			handledWaitingForLinkingIds: handledRemainingFilesIds.filter(item => !existingFilesIds.includes(item)),
+			handledRemainingFilesIds: handledRemainingFilesIds.filter((item) =>
+				existingFilesIds.includes(item),
+			),
+			handledWaitingForLinkingIds: handledRemainingFilesIds.filter(
+				(item) => !existingFilesIds.includes(item),
+			),
 		};
 	}
 
-	private async removeUnnecessaryFilesAndGetRemaining(entityFiles, remainingFilesIds: string[]): Promise<Upload[]> {
+	private async removeUnnecessaryFilesAndGetRemaining(
+		entityFiles,
+		remainingFilesIds: string[],
+	): Promise<Upload[]> {
 		if (!entityFiles.length) {
 			return [];
 		}
 
-		await Promise.all(entityFiles
-			.filter(uploadEntity => !remainingFilesIds.includes(uploadEntity.id))
-			.map(async (uploadEntity) => { await uploadEntity.destroy(); })
+		await Promise.all(
+			entityFiles
+				.filter((uploadEntity) => !remainingFilesIds.includes(uploadEntity.id))
+				.map(async (uploadEntity) => {
+					await uploadEntity.destroy();
+				}),
 		);
-		return entityFiles.filter(uploadEntity => remainingFilesIds.includes(uploadEntity.id));
+		return entityFiles.filter((uploadEntity) => remainingFilesIds.includes(uploadEntity.id));
 	}
-
 
 	private async createOrUpdateHelper({
 		uploadFolder,
@@ -166,15 +193,17 @@ export class UploadService {
 		handlePicture,
 		status = UploadStatus.LINKED,
 	}: {
-		uploadFolder: string,
-		file: MulterFile,
-		width: number,
-		height?: number,
-		handlePicture?: (sharp) => any,
-		status?,
+		uploadFolder: string;
+		file: MulterFile;
+		width: number;
+		height?: number;
+		handlePicture?: (sharp) => any;
+		status?;
 	}): Promise<Upload> {
 		const hash = this.cryptoService.generateHash();
-		const relativeFilePath = path.normalize(`${uploadFolder}/${hash}${path.extname(file.originalname)}`);
+		const relativeFilePath = path.normalize(
+			`${uploadFolder}/${hash}${path.extname(file.originalname)}`,
+		);
 		const absoluteFilePath = path.resolve(relativeFilePath);
 		const absoluteFolderPath = path.resolve(uploadFolder);
 
@@ -189,7 +218,14 @@ export class UploadService {
 
 		let preview = null;
 		if (config.getUploadOptions().ALLOWED_VIDEO_MIMETYPES.includes(file.mimetype)) {
-			preview = await this.handleVideo({ hash, uploadFolder, absoluteFilePath, absoluteFolderPath, width, height });
+			preview = await this.handleVideo({
+				hash,
+				uploadFolder,
+				absoluteFilePath,
+				absoluteFolderPath,
+				width,
+				height,
+			});
 		}
 
 		const uploadEntity = new Upload();
@@ -203,7 +239,12 @@ export class UploadService {
 		return uploadEntity.save();
 	}
 
-	protected async handlePicture(file: MulterFile, width: number, height?: number, handlePicture?: (sharp) => any): Promise<Buffer> {
+	protected async handlePicture(
+		file: MulterFile,
+		width: number,
+		height?: number,
+		handlePicture?: (sharp) => any,
+	): Promise<Buffer> {
 		if (file.mimetype === 'image/svg+xml') {
 			return file.buffer;
 		}
@@ -222,45 +263,51 @@ export class UploadService {
 		width,
 		height,
 	}: {
-		hash: string,
-		uploadFolder: string,
-		absoluteFilePath: string,
-		absoluteFolderPath: string,
-		width: number,
-		height?: number,
+		hash: string;
+		uploadFolder: string;
+		absoluteFilePath: string;
+		absoluteFolderPath: string;
+		width: number;
+		height?: number;
 	}): Promise<string> {
 		const previewFileName = `${hash}_preview.png`;
 
-			let size;
-			if (width && height) {
-				size = `${width}x${height}`;
-			} else if (width) {
-				size = `${width}x?`;
-			} else if (height) {
-				size = `?x${height}`;
-			}
+		let size;
+		if (width && height) {
+			size = `${width}x${height}`;
+		} else if (width) {
+			size = `${width}x?`;
+		} else if (height) {
+			size = `?x${height}`;
+		}
 
-			return new Promise<string>((resolve, reject) => {
-				ffmpeg(absoluteFilePath)
-					.setFfmpegPath(ffmpeg_static)
-					.screenshots({
-						timestamps: ['00:00:01.000'],
-						folder: absoluteFolderPath,
-						filename: previewFileName,
-						size,
-					}).on('end', function() {
-						resolve(`/${uploadFolder}/${previewFileName}`);
-					}).on('error', function(err) {
-						reject(err);
-					});
-			});
+		return new Promise<string>((resolve, reject) => {
+			ffmpeg(absoluteFilePath)
+				.setFfmpegPath(ffmpeg_static)
+				.screenshots({
+					timestamps: ['00:00:01.000'],
+					folder: absoluteFolderPath,
+					filename: previewFileName,
+					size,
+				})
+				.on('end', function () {
+					resolve(`/${uploadFolder}/${previewFileName}`);
+				})
+				.on('error', function (err) {
+					reject(err);
+				});
+		});
 	}
 
-	protected async writeBufferToStorage(buffer: Buffer, uploadPath, uploadFolderPath): Promise<void> {
+	protected async writeBufferToStorage(
+		buffer: Buffer,
+		uploadPath,
+		uploadFolderPath,
+	): Promise<void> {
 		await mkdirp(uploadFolderPath);
 
 		const write = (resolve, reject) => {
-			fs.writeFile(uploadPath, buffer, 'binary', function(err) {
+			fs.writeFile(uploadPath, buffer, 'binary', function (err) {
 				if (err) reject(err);
 				resolve();
 			});
@@ -284,14 +331,22 @@ export class UploadService {
 
 	public async remove(dbRowInsideTrigger) {
 		if (dbRowInsideTrigger.url) {
-			const relativeFilePath = dbRowInsideTrigger.url.split(path.sep).filter(chunk => chunk.trim()).join(path.sep);
+			const relativeFilePath = dbRowInsideTrigger.url
+				.split(path.sep)
+				.filter((chunk) => chunk.trim())
+				.join(path.sep);
 			const absoluteFilePath = path.resolve(relativeFilePath);
 			const absoluteFolderPath = path.resolve(path.dirname(relativeFilePath));
 
 			if (this.isRemoveAllowed(absoluteFilePath)) {
 				try {
 					if (dbRowInsideTrigger.preview) {
-						const absoluteFilePreviewPath = path.resolve(dbRowInsideTrigger.preview.split(path.sep).filter(chunk => chunk.trim()).join(path.sep));
+						const absoluteFilePreviewPath = path.resolve(
+							dbRowInsideTrigger.preview
+								.split(path.sep)
+								.filter((chunk) => chunk.trim())
+								.join(path.sep),
+						);
 						await fsExtra.remove(absoluteFilePreviewPath);
 					}
 					await fsExtra.remove(absoluteFilePath);
@@ -305,15 +360,15 @@ export class UploadService {
 	}
 
 	private isRemoveAllowed(absolutePath: string): boolean {
-		return config.getUploadOptions().folders.some(folder => {
+		return config.getUploadOptions().folders.some((folder) => {
 			const uploadPath = path.resolve(folder);
 			return absolutePath.startsWith(uploadPath) && fs.existsSync(absolutePath);
 		});
 	}
 
 	private isEmptyDirectory(path: string): Promise<boolean> {
-		return new Promise(resolve => {
-			extFs.isEmpty(path, function(empty) {
+		return new Promise((resolve) => {
+			extFs.isEmpty(path, function (empty) {
 				resolve(empty);
 			});
 		});
@@ -327,8 +382,8 @@ export class UploadService {
 					file: newFile,
 					width: config.getUploadOptions().imageWidth,
 					status: UploadStatus.WAIT_FOR_LINKING,
-				})
-			)
+				}),
+			),
 		);
 	}
 }

@@ -2,12 +2,10 @@ import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class OptionalBooleanQueryValidationPipe implements PipeTransform<any> {
-	constructor(
-		private readonly label: string,
-	) {}
+	constructor(private readonly label: string) {}
 
 	async transform(value) {
-		if (typeof value === 'undefined'){
+		if (typeof value === 'undefined') {
 			return value;
 		}
 

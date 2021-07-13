@@ -13,5 +13,3 @@ export * from './sequelize.options';
 export * from './crypto';
 export * from './email';
 export * from './sms';
-
-

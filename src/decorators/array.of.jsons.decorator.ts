@@ -4,7 +4,9 @@ import { ArrayNotEmpty, IsArray, IsJSON } from 'class-validator';
 
 export function ArrayOfJSONsDecorator(description = '') {
 	return applyDecorators(
-		ApiProperty({ description: `@IsArray(), @ArrayNotEmpty(), @IsJSON({ each: true }); ${description}` }),
+		ApiProperty({
+			description: `@IsArray(), @ArrayNotEmpty(), @IsJSON({ each: true }); ${description}`,
+		}),
 		IsArray(),
 		ArrayNotEmpty(),
 		IsJSON({ each: true }),

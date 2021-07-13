@@ -1,11 +1,24 @@
-import { Body, DefaultValuePipe, Delete, Get, Param, ParseUUIDPipe, Post, Put, Query, Req, UploadedFiles, UseInterceptors } from "@nestjs/common";
-import { AnyFilesInterceptor } from "@nestjs/platform-express";
-import { ApiConsumes } from "@nestjs/swagger";
-import { ApiImplicitQueries } from "nestjs-swagger-api-implicit-queries-decorator";
-import { ApiResponseDecorator } from "../../decorators/api.response.decorator";
-import { OptionalBooleanQueryValidationPipe } from "../../pipes/optional.boolean.query.validation.pipe";
-import { BulkDto } from "../dto/bulk.dto";
-import { CrudService } from "../services/crud.service";
+import {
+	Body,
+	DefaultValuePipe,
+	Delete,
+	Get,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	Put,
+	Query,
+	Req,
+	UploadedFiles,
+	UseInterceptors,
+} from '@nestjs/common';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { ApiConsumes } from '@nestjs/swagger';
+import { ApiImplicitQueries } from 'nestjs-swagger-api-implicit-queries-decorator';
+import { ApiResponseDecorator } from '../../decorators/api.response.decorator';
+import { OptionalBooleanQueryValidationPipe } from '../../pipes/optional.boolean.query.validation.pipe';
+import { BulkDto } from '../dto/bulk.dto';
+import { CrudService } from '../services/crud.service';
 
 export class CrudController {
 	protected readonly service: CrudService<any>;
@@ -19,7 +32,9 @@ export class CrudController {
 		{ name: 'limit', required: false },
 		{ name: 'search', required: false },
 	])
-	@ApiResponseDecorator([{ code: 200, description: 'entities: ${Entity[]}, totalCount: ${totalCount}' }])
+	@ApiResponseDecorator([
+		{ code: 200, description: 'entities: ${Entity[]}, totalCount: ${totalCount}' },
+	])
 	@Get()
 	async get(
 		@Query('offset', new DefaultValuePipe(0)) offset: number,
@@ -29,7 +44,7 @@ export class CrudController {
 	) {
 		return {
 			statusCode: 200,
-			...await this.service.findWithPagination({ search, offset, limit }),
+			...(await this.service.findWithPagination({ search, offset, limit })),
 		};
 	}
 
@@ -37,13 +52,9 @@ export class CrudController {
 	@UseInterceptors(AnyFilesInterceptor())
 	@ApiResponseDecorator([400, 201])
 	@Post()
-	async create(
-		@Body() dto,
-		@UploadedFiles() files = {},
-		@Req() req,
-		...rest
-	) {
-		const { dto: transformedDto, files: transformedFiles } = await this.service.validateBeforeCreating(dto, files, req);
+	async create(@Body() dto, @UploadedFiles() files = {}, @Req() req, ...rest) {
+		const { dto: transformedDto, files: transformedFiles } =
+			await this.service.validateBeforeCreating(dto, files, req);
 		const entity = await this.service.create(transformedDto, transformedFiles);
 		return {
 			statusCode: 201,
@@ -53,11 +64,7 @@ export class CrudController {
 
 	@ApiResponseDecorator([400, 201])
 	@Post('bulk')
-	async bulkCreate(
-		@Body() dto: BulkDto,
-		@Req() req,
-		...rest
-	) {
+	async bulkCreate(@Body() dto: BulkDto, @Req() req, ...rest) {
 		await this.service.validateBeforeBulkCreating(dto, req);
 		await this.service.bulkCreate(dto);
 		return {
@@ -76,7 +83,8 @@ export class CrudController {
 		@Req() req,
 		...rest
 	) {
-		const { dto: transformedDto, files: transformedFiles } = await this.service.validateBeforeUpdating(id, dto, files, req);
+		const { dto: transformedDto, files: transformedFiles } =
+			await this.service.validateBeforeUpdating(id, dto, files, req);
 		const entity = await this.service.updateById(id, transformedDto, transformedFiles);
 		return {
 			statusCode: 200,
@@ -84,9 +92,7 @@ export class CrudController {
 		};
 	}
 
-	@ApiImplicitQueries([
-		{ name: 'force', required: false },
-	])
+	@ApiImplicitQueries([{ name: 'force', required: false }])
 	@ApiResponseDecorator([400, 200])
 	@Delete(':id')
 	async delete(

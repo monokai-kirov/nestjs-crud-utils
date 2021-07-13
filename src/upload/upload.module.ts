@@ -11,18 +11,8 @@ export class UploadModule {
 		return {
 			module: UploadModule,
 			imports,
-			providers: [
-				UploadService,
-				UploadValidationService,
-				PgService,
-				UploadTriggerService,
-			],
-			exports: [
-				UploadService,
-				UploadValidationService,
-				PgService,
-				UploadTriggerService,
-			],
+			providers: [UploadService, UploadValidationService, PgService, UploadTriggerService],
+			exports: [UploadService, UploadValidationService, PgService, UploadTriggerService],
 		};
 	}
 }

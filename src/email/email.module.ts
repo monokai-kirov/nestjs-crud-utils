@@ -3,11 +3,7 @@ import { EmailService } from '../email/services/email.service';
 
 @Global()
 @Module({
-	providers: [
-		EmailService,
-	],
-	exports: [
-		EmailService,
-	],
+	providers: [EmailService],
+	exports: [EmailService],
 })
 export class EmailModule {}

@@ -18,20 +18,22 @@ export class Config {
 			ttl: 1500,
 			wait: 3000,
 			key: 'the-election',
-		}).then(async safeLeader => {
-			await safeLeader.elect();
-			this.resolveSafeLeader(safeLeader);
-		}).catch(() => {
-			process.exit(1);
-		});
+		})
+			.then(async (safeLeader) => {
+				await safeLeader.elect();
+				this.resolveSafeLeader(safeLeader);
+			})
+			.catch(() => {
+				process.exit(1);
+			});
 	}
 
 	public isDevelopment() {
-		return (process.env.NODE_ENV === 'development');
+		return process.env.NODE_ENV === 'development';
 	}
 
 	public isProduction() {
-		return (process.env.NODE_ENV === 'production');
+		return process.env.NODE_ENV === 'production';
 	}
 
 	public getCorsOrigin() {
@@ -39,7 +41,7 @@ export class Config {
 	}
 
 	public getDatabaseOptions(sync = true) {
-		return ({
+		return {
 			dialect: 'postgres',
 			host: process.env.DB_HOST,
 			port: parseInt(process.env.DB_PORT),
@@ -47,12 +49,14 @@ export class Config {
 			password: process.env.DB_PASSWORD,
 			database: process.env.DB_NAME,
 			autoLoadModels: true,
-			...(sync ? {
-				synchronize: true,
-				sync: {
-					alter: true,
-				},
-			} : {}),
+			...(sync
+				? {
+						synchronize: true,
+						sync: {
+							alter: true,
+						},
+				  }
+				: {}),
 			logging: false,
 			pool: {
 				max: 100,
@@ -62,7 +66,7 @@ export class Config {
 				underscored: true,
 				defaultScope: defaultScopeOptions,
 			},
-		} as unknown) as SequelizeOptions;
+		} as unknown as SequelizeOptions;
 	}
 
 	public async getAsyncDatabaseOptions() {
@@ -85,14 +89,14 @@ export class Config {
 	}
 
 	public async isLeader() {
-		const safeLeader = (await this.safeLeader);
+		const safeLeader = await this.safeLeader;
 		return safeLeader.isLeader();
 	}
 
 	public getCacheOptions(redefined = {}) {
 		return {
 			store: redisStore,
-			...(this.getRedisOptions()),
+			...this.getRedisOptions(),
 			ttl: 300,
 			max: 500,
 			...redefined,
@@ -125,21 +129,9 @@ export class Config {
 		return {
 			imageWidth: 1000,
 			folders: ['upload'],
-			ALLOWED_PICTURE_MIMETYPES: [
-				'image/jpeg',
-				'image/png',
-				'image/svg+xml',
-			],
-			ALLOWED_AUDIO_MIMETYPES: [
-				'audio/mpeg',
-				'audio/ogg',
-				'audio/aac',
-			],
-			ALLOWED_VIDEO_MIMETYPES: [
-				'video/mpeg',
-				'video/ogg',
-				'video/mp4',
-			],
+			ALLOWED_PICTURE_MIMETYPES: ['image/jpeg', 'image/png', 'image/svg+xml'],
+			ALLOWED_AUDIO_MIMETYPES: ['audio/mpeg', 'audio/ogg', 'audio/aac'],
+			ALLOWED_VIDEO_MIMETYPES: ['video/mpeg', 'video/ogg', 'video/mp4'],
 			ALLOWED_DOCUMENT_MIMETYPES: [
 				'text/plain',
 				'application/pdf',

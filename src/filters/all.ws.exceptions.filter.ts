@@ -1,4 +1,3 @@
-
 import { Catch, ArgumentsHost, HttpException } from '@nestjs/common';
 import { BaseWsExceptionFilter, WsException } from '@nestjs/websockets';
 import { utils } from '../utils';

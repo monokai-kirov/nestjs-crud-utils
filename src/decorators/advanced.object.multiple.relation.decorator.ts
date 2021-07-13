@@ -9,7 +9,7 @@ export const addAdvancedMultipleRelationToDtoMetadata = (dto, obj) => {
 		relations = [];
 	}
 
-	if (!relations.find(v => v.name === obj.name)) {
+	if (!relations.find((v) => v.name === obj.name)) {
 		relations.push(obj);
 		Reflect.defineMetadata(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, relations, dto);
 	}
@@ -21,24 +21,28 @@ export function AdvancedObjectMultipleRelationDecorator({
 	minCount = 0,
 	maxCount = Infinity,
 }: {
-	schema?: object,
-	unique?: string[],
-	minCount?: number,
-	maxCount?: number,
+	schema?: object;
+	unique?: string[];
+	minCount?: number;
+	maxCount?: number;
 } = {}) {
-	return function(target, propertyKey, descriptor?) {
-		addAdvancedMultipleRelationToDtoMetadata(target.constructor.prototype, { name: propertyKey, schema, unique, minCount, maxCount });
+	return function (target, propertyKey, descriptor?) {
+		addAdvancedMultipleRelationToDtoMetadata(target.constructor.prototype, {
+			name: propertyKey,
+			schema,
+			unique,
+			minCount,
+			maxCount,
+		});
 
-		const decorators = [
-			OptionalArrayOfObjectsDecorator(),
-		];
+		const decorators = [OptionalArrayOfObjectsDecorator()];
 
 		for (const decorator of decorators as any[]) {
 			if (target instanceof Function && !descriptor) {
-					decorator(target);
-					continue;
+				decorator(target);
+				continue;
 			}
 			decorator(target, propertyKey, descriptor);
 		}
-	}
+	};
 }

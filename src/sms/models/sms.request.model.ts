@@ -2,10 +2,7 @@ import { Column, Model, Table, DataType } from 'sequelize-typescript';
 import { primaryKeyOptions } from '../../sequelize.options';
 
 @Table({
-	indexes: [
-		{ fields: ['ip_address']},
-		{ fields: ['hash']},
-	],
+	indexes: [{ fields: ['ip_address'] }, { fields: ['hash'] }],
 })
 export class SmsRequest extends Model {
 	@Column(primaryKeyOptions)

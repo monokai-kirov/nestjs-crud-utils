@@ -7,6 +7,6 @@ export function ArrayOfUUIDsDecorator() {
 		ApiProperty({ description: `@IsArray(), @ArrayNotEmpty(), @IsUUID('4', { each: true })` }),
 		IsArray(),
 		ArrayNotEmpty(),
-		IsUUID('4', { each: true })
+		IsUUID('4', { each: true }),
 	);
 }

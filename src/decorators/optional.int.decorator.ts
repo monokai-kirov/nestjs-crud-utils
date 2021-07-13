@@ -4,12 +4,12 @@ import { Transform } from 'class-transformer';
 import { Allow, isInt } from 'class-validator';
 
 export function OptionalIntDecorator() {
-	return function(target, propertyKey, descriptor?) {
+	return function (target, propertyKey, descriptor?) {
 		const decorators = [
 			ApiPropertyOptional(),
 			ApiProperty({ description: '@IsOptional(), @IsInt()' }),
 			Allow(),
-			Transform(( { value }) => {
+			Transform(({ value }) => {
 				if (value === undefined || value === null) {
 					return value;
 				} else {
@@ -22,15 +22,15 @@ export function OptionalIntDecorator() {
 					}
 					return value;
 				}
-			})
+			}),
 		];
 
 		for (const decorator of decorators as any[]) {
 			if (target instanceof Function && !descriptor) {
-					decorator(target);
-					continue;
+				decorator(target);
+				continue;
 			}
 			decorator(target, propertyKey, descriptor);
 		}
-	}
+	};
 }

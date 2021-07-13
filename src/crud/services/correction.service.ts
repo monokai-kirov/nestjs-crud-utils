@@ -1,21 +1,37 @@
-import { isNotEmpty } from "class-validator";
-import { Sequelize } from "sequelize-typescript";
-import { EntityService, Include } from "./entity.service";
+import { isNotEmpty } from 'class-validator';
+import { Sequelize } from 'sequelize-typescript';
+import { EntityService, Include } from './entity.service';
 import { Op } from 'sequelize';
 
 export class CorrectionService<T> {
-	public getCorrectInclude(context: EntityService<T>, unscopedInclude: boolean, include: Include, where: Object, optimizeInclude: boolean = false) {
+	public getCorrectInclude(
+		context: EntityService<T>,
+		unscopedInclude: boolean,
+		include: Include,
+		where: Object,
+		optimizeInclude: boolean = false,
+	) {
 		if (!include) {
 			return [];
 		}
 
 		const outerWhere = this.getSequelizeOuterWhere(context, where);
 		return unscopedInclude
-			? this.addUnscopedAttributes(context, this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude))
+			? this.addUnscopedAttributes(
+					context,
+					this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude),
+			  )
 			: this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude);
 	}
 
-	public addCorrectOrder(context: EntityService<T>, order: any[] = [], group: any, include, unscoped: boolean, withLeafs = true) {
+	public addCorrectOrder(
+		context: EntityService<T>,
+		order: any[] = [],
+		group: any,
+		include,
+		unscoped: boolean,
+		withLeafs = true,
+	) {
 		const parent = context.__crudModel__.prototype.constructor;
 		let result = [];
 
@@ -28,9 +44,11 @@ export class CorrectionService<T> {
 		}
 
 		if (include.all === true) {
-			context.getAllAssociations().map(child => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
+			context
+				.getAllAssociations()
+				.map((child) => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
 		} else {
-			include.map(child => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
+			include.map((child) => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
 		}
 		return result;
 	}
@@ -38,15 +56,25 @@ export class CorrectionService<T> {
 	/**
 	 * Fix sequeilize outer where clause
 	 */
-	public addCorrectRequiredAttributes(context: EntityService<T>, include, outerWhere: string[], optimizeInclude: boolean = false) {
+	public addCorrectRequiredAttributes(
+		context: EntityService<T>,
+		include,
+		outerWhere: string[],
+		optimizeInclude: boolean = false,
+	) {
 		const parent = context.__crudModel__.prototype.constructor;
-		return (include.all === true)
-			? context.getAllAssociations()
-				.map(child => this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude))
-				.filter(v => v)
+		return include.all === true
+			? context
+					.getAllAssociations()
+					.map((child) =>
+						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
+					)
+					.filter((v) => v)
 			: include
-				.map(child => this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude))
-				.filter(v => v);
+					.map((child) =>
+						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
+					)
+					.filter((v) => v);
 	}
 
 	/**
@@ -54,18 +82,18 @@ export class CorrectionService<T> {
 	 */
 	public addEmptyAttributes(context: EntityService<T>, include) {
 		const parent = context.__crudModel__.prototype.constructor;
-		return (include.all === true)
-			? context.getAllAssociations().map(child => this.addEmptyAttributesHelper(parent, child))
-			: include.map(child => this.addEmptyAttributesHelper(parent, child));
+		return include.all === true
+			? context.getAllAssociations().map((child) => this.addEmptyAttributesHelper(parent, child))
+			: include.map((child) => this.addEmptyAttributesHelper(parent, child));
 	}
 
 	/**
 	 * For admin crud (default unscoped: true)
 	 */
-	 public addUnscopedAttributes(context: EntityService<T>, include) {
-		return (include.all === true)
-			? context.getAllAssociations().map(child => this.addUnscopedAttributesHelper(child))
-			: include.map(child => this.addUnscopedAttributesHelper(child));
+	public addUnscopedAttributes(context: EntityService<T>, include) {
+		return include.all === true
+			? context.getAllAssociations().map((child) => this.addUnscopedAttributesHelper(child))
+			: include.map((child) => this.addUnscopedAttributesHelper(child));
 	}
 
 	/**
@@ -81,7 +109,7 @@ export class CorrectionService<T> {
 			let chunk = v
 				.replace(/\$/g, '')
 				.split('.')
-				.map(v => v.replace(/'|"/g, ''));
+				.map((v) => v.replace(/'|"/g, ''));
 
 			if (chunk[0] === context.entityName) {
 				chunk.shift();
@@ -91,7 +119,7 @@ export class CorrectionService<T> {
 			return chunk;
 		};
 
-		Object.keys(where).forEach(key => {
+		Object.keys(where).forEach((key) => {
 			if (typeof key === 'string' && key.startsWith('$') && key.endsWith('$')) {
 				const chunk = processChunk(key);
 				if (chunk) {
@@ -100,7 +128,7 @@ export class CorrectionService<T> {
 			}
 		});
 
-		Object.getOwnPropertySymbols(where).forEach(keySymbol => {
+		Object.getOwnPropertySymbols(where).forEach((keySymbol) => {
 			if (String(keySymbol) === String(Op.or) || String(keySymbol) === String(Op.and)) {
 				Object.values(where[keySymbol]).forEach((value: any) => {
 					let chunk = value;
@@ -128,17 +156,24 @@ export class CorrectionService<T> {
 		return [...result];
 	}
 
-	protected addCorrectRequiredAttributesHelper(parent: any, child: any, outerWhere: string[], levels: string[], optimizeInclude: boolean) {
-		const getLinkName = (parent, childModel) => parent?.associations
-			? Object.entries(parent.associations)
-				.filter(([key, value]) => (value as any).target === childModel)
-				.map(([key, value]) => key)
-				.shift()
-			: null;
+	protected addCorrectRequiredAttributesHelper(
+		parent: any,
+		child: any,
+		outerWhere: string[],
+		levels: string[],
+		optimizeInclude: boolean,
+	) {
+		const getLinkName = (parent, childModel) =>
+			parent?.associations
+				? Object.entries(parent.associations)
+						.filter(([key, value]) => (value as any).target === childModel)
+						.map(([key, value]) => key)
+						.shift()
+				: null;
 
 		const checkOuterWhere = (outerWhere, levelChunks: string[]) => {
 			const chunk = levelChunks.join('.');
-			return outerWhere.includes(chunk) || outerWhere.some(v => v.startsWith(chunk));
+			return outerWhere.includes(chunk) || outerWhere.some((v) => v.startsWith(chunk));
 		};
 
 		if (!child.model) {
@@ -177,18 +212,39 @@ export class CorrectionService<T> {
 				...ops,
 				include: child.include
 					? child.include
-						.map(subchild => this.addCorrectRequiredAttributesHelper(child.model, subchild, outerWhere, levelChunks, optimizeInclude))
-						.filter(v => v)
+							.map((subchild) =>
+								this.addCorrectRequiredAttributesHelper(
+									child.model,
+									subchild,
+									outerWhere,
+									levelChunks,
+									optimizeInclude,
+								),
+							)
+							.filter((v) => v)
 					: [],
 			};
 		}
-	};
+	}
 
-	protected addCorrectOrderHelper(parent: any, child: any, order: any[], levels: any[] = [], withLeafs = true) {
+	protected addCorrectOrderHelper(
+		parent: any,
+		child: any,
+		order: any[],
+		levels: any[] = [],
+		withLeafs = true,
+	) {
 		const childModel = child.model ?? child;
-		const [key, value] = Object.entries(parent.associations).find(([key, value]: any) => value.target === childModel);
+		const [key, value] = Object.entries(parent.associations).find(
+			([key, value]: any) => value.target === childModel,
+		);
 
-		if (value && value['target'] && value['target']['_scope'] && value['target']['_scope']['order']) {
+		if (
+			value &&
+			value['target'] &&
+			value['target']['_scope'] &&
+			value['target']['_scope']['order']
+		) {
 			for (let chunk of value['target']['_scope']['order']) {
 				if (chunk[0] === 'createdAt' || chunk[0] === 'updatedAt') {
 					continue;
@@ -203,35 +259,34 @@ export class CorrectionService<T> {
 		}
 
 		if (withLeafs && child.include) {
-			child.include.map(subchild => this.addCorrectOrderHelper(
-				childModel,
-				subchild,
-				order,
-				[...levels, key],
-				withLeafs
-			));
+			child.include.map((subchild) =>
+				this.addCorrectOrderHelper(childModel, subchild, order, [...levels, key], withLeafs),
+			);
 		}
 	}
 
 	protected addEmptyAttributesHelper(parent: any, child: any) {
-		const getManyToManyAssociations = (prop) => prop?.associations
-			? Object.entries(prop.associations)
-				.filter(([key, value]) => (value as any).associationType === 'BelongsToMany')
-				.map(([key, value]) => (value as any).target)
-			: [];
+		const getManyToManyAssociations = (prop) =>
+			prop?.associations
+				? Object.entries(prop.associations)
+						.filter(([key, value]) => (value as any).associationType === 'BelongsToMany')
+						.map(([key, value]) => (value as any).target)
+				: [];
 
 		if (!child.model) {
 			return {
 				model: child,
 				attributes: [],
 				include: [],
-				...(getManyToManyAssociations(parent).includes(child) ? { through: { attributes: [] }} : {}),
+				...(getManyToManyAssociations(parent).includes(child)
+					? { through: { attributes: [] } }
+					: {}),
 			};
 		} else {
 			let props = {};
 			if (getManyToManyAssociations(parent).includes(child.model) && !child.foreignKey) {
 				if (child.through) {
-					props = { through: { model: child.through, attributes: [] }};
+					props = { through: { model: child.through, attributes: [] } };
 				} else {
 					props = { through: { attributes: [] } };
 				}
@@ -240,11 +295,13 @@ export class CorrectionService<T> {
 			return {
 				...child,
 				attributes: [],
-				include: child.include ? child.include.map(subchild => this.addEmptyAttributesHelper(child.model, subchild)) : [],
+				include: child.include
+					? child.include.map((subchild) => this.addEmptyAttributesHelper(child.model, subchild))
+					: [],
 				...props,
 			};
 		}
-	};
+	}
 
 	protected addUnscopedAttributesHelper(child: any) {
 		if (!child.model) {
@@ -255,13 +312,20 @@ export class CorrectionService<T> {
 			return {
 				...child,
 				model: child.model.unscoped(),
-				include: child.include ? child.include.map(subchild => this.addUnscopedAttributesHelper(subchild)) : [],
+				include: child.include
+					? child.include.map((subchild) => this.addUnscopedAttributesHelper(subchild))
+					: [],
 			};
 		}
-	};
+	}
 
-	public unscopedHelper(context: EntityService<T>, unscoped: boolean, additionalScopes: string[] = [], model = null) {
-		let usedModel = (model ?? context.__crudModel__);
+	public unscopedHelper(
+		context: EntityService<T>,
+		unscoped: boolean,
+		additionalScopes: string[] = [],
+		model = null,
+	) {
+		let usedModel = model ?? context.__crudModel__;
 		usedModel = unscoped ? usedModel.unscoped() : usedModel;
 
 		for (let additionalScope of additionalScopes) {

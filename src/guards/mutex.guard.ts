@@ -8,10 +8,7 @@ import { utils } from '../utils';
 export class MutexGuard implements CanActivate {
 	public async canActivate(context: ExecutionContext) {
 		const request = context.switchToHttp().getRequest();
-		await utils.acquireMutex(
-			request,
-			`${request['user']['id']}:${context.getHandler().name}`,
-		);
+		await utils.acquireMutex(request, `${request['user']['id']}:${context.getHandler().name}`);
 		return true;
 	}
 }
