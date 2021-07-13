@@ -11,7 +11,7 @@ export type EntityOptions = {
 	additionalScopes?: string[];
 };
 
-export type Include = { all: boolean } | Object[];
+export type Include = { all: boolean } | Record<string, any>[];
 
 export class EntityService<T> {
 	public get crudModel(): Model {
@@ -56,13 +56,13 @@ export class EntityService<T> {
 	public readonly validationService: ValidationService<T>;
 	public readonly __crudModel__;
 
-	constructor(crudModel: Object, options: EntityOptions = {}) {
+	constructor(crudModel: Record<string, any>, options: EntityOptions = {}) {
 		this.correctionService = correctionService;
 		this.validationService = validationService as ValidationService<T>;
 		this.__crudModel__ = crudModel;
 
 		const entityOptions = { ...EntityService.DEFAULT_ENTITY_OPTIONS, ...options };
-		for (let prop in entityOptions) {
+		for (const prop in entityOptions) {
 			if (Object.hasOwnProperty.call(entityOptions, prop)) {
 				this.entityOptions[prop] = entityOptions[prop];
 			}
@@ -88,7 +88,7 @@ export class EntityService<T> {
 		...args
 	}: {
 		search?: string;
-		where?: Object;
+		where?: Record<string, any>;
 		include?: Include;
 		offset?: number;
 		limit?: number;
@@ -137,7 +137,7 @@ export class EntityService<T> {
 	protected addSearchToFindOptions(search, findOptions) {
 		const searchWhere = [];
 
-		for (let option of this.getSearchingProps()) {
+		for (const option of this.getSearchingProps()) {
 			let property = option;
 			let value = search;
 
@@ -195,7 +195,7 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		where?: Object;
+		where?: Record<string, any>;
 		include?: Include;
 		unscoped?: boolean;
 		unscopedInclude?: boolean;
@@ -223,7 +223,7 @@ export class EntityService<T> {
 			additionalScopes = this.entityOptions.additionalScopes,
 			...args
 		}: {
-			where?: Object;
+			where?: Record<string, any>;
 			include?: Include;
 			unscoped?: boolean;
 			unscopedInclude?: boolean;
@@ -250,7 +250,7 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		where?: Object;
+		where?: Record<string, any>;
 		include?: Include;
 		order?: any[];
 		unscoped?: boolean;
@@ -277,7 +277,7 @@ export class EntityService<T> {
 			additionalScopes = this.entityOptions.additionalScopes,
 			...args
 		}: {
-			where?: Object;
+			where?: Record<string, any>;
 			include?: Include;
 			order?: any[];
 			unscoped?: boolean;
@@ -307,7 +307,7 @@ export class EntityService<T> {
 		additionalScopes = this.entityOptions.additionalScopes,
 		...args
 	}: {
-		where?: Object;
+		where?: Record<string, any>;
 		include?: Include;
 		unscoped?: boolean;
 		unscopedInclude?: boolean;

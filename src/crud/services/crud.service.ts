@@ -23,8 +23,8 @@ export type CrudOptions = {
 };
 
 export interface ActiveUpdate {
-	calcActive?: (dto) => {};
-	childs: Array<Object | ActiveUpdateOption>;
+	calcActive?: (dto) => boolean;
+	childs: Array<Record<string, any> | ActiveUpdateOption>;
 }
 export interface ActiveUpdateOption {
 	model: any;
@@ -40,7 +40,7 @@ export class CrudService<T> extends EntityService<T> {
 	public getDtoType(dto) {
 		return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
 	}
-	protected async fillDto(id: string | null, dto): Promise<Object> {
+	protected async fillDto(id: string | null, dto): Promise<Record<string, any>> {
 		return dto;
 	}
 	protected getIncludeOptions(): Include {
@@ -90,7 +90,12 @@ export class CrudService<T> extends EntityService<T> {
 	protected readonly dtoType;
 	protected readonly crudValidationService: CrudValidationService<T>;
 
-	constructor(crudModel, dtoType: Object, uploadService: UploadService, options: CrudOptions = {}) {
+	constructor(
+		crudModel,
+		dtoType: Record<string, any>,
+		uploadService: UploadService,
+		options: CrudOptions = {},
+	) {
 		super(crudModel, {
 			unscoped:
 				options.unscoped !== undefined
@@ -119,7 +124,7 @@ export class CrudService<T> extends EntityService<T> {
 		this.crudValidationService = crudValidationService;
 
 		const crudOptions = { ...CrudService.DEFAULT_CRUD_OPTIONS, ...options };
-		for (let prop in crudOptions) {
+		for (const prop in crudOptions) {
 			if (Object.hasOwnProperty.call(crudOptions, prop)) {
 				this.crudOptions[prop] = crudOptions[prop];
 			}
@@ -130,7 +135,7 @@ export class CrudService<T> extends EntityService<T> {
 		if (this.crudOptions.withTriggersCreation) {
 			this.upload.createRemovingTriggers(crudModel);
 
-			for (let childModel of this.crudOptions.childModels) {
+			for (const childModel of this.crudOptions.childModels) {
 				this.upload.createRemovingTriggers(childModel);
 			}
 		}
@@ -191,7 +196,7 @@ export class CrudService<T> extends EntityService<T> {
 			childMultipleRelations = this.getMultipleRelations(childModel).map((v) => v.name);
 		}
 
-		for (let prop in dto) {
+		for (const prop in dto) {
 			if (Object.prototype.hasOwnProperty.call(dto, prop)) {
 				if (
 					parentMultipleRelations.includes(prop) ||
@@ -216,7 +221,7 @@ export class CrudService<T> extends EntityService<T> {
 	protected async updateRelations(entity: T, dto, files) {
 		const advancedMultipleRelations = this.getAdvancedMultipleRelations(dto).map((v) => v.name);
 
-		for (let relation of this.getMultipleRelations()) {
+		for (const relation of this.getMultipleRelations()) {
 			if (dto[relation.name] && !advancedMultipleRelations.includes(relation.name)) {
 				await (entity as any)[`set${utils.ucFirst(relation.name)}`](dto[relation.name]);
 			}
@@ -246,7 +251,7 @@ export class CrudService<T> extends EntityService<T> {
 		const childSingleRelations = this.getSingleRelations(childModel).map((v) => v.name);
 		const childMultipleRelations = this.getMultipleRelations(childModel).map((v) => v.name);
 
-		for (let prop in dto) {
+		for (const prop in dto) {
 			if (
 				parentSingleRelations.includes(prop) ||
 				parentMultipleRelations.includes(prop) ||
@@ -265,7 +270,7 @@ export class CrudService<T> extends EntityService<T> {
 
 		childEntity = await childEntity.save();
 
-		for (let childRelation of this.getMultipleRelations(childModel)) {
+		for (const childRelation of this.getMultipleRelations(childModel)) {
 			if (dto[childRelation.name]) {
 				await (childEntity as any)[`set${utils.ucFirst(childRelation.name)}`](
 					dto[childRelation.name],
@@ -275,8 +280,8 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	protected async updateAdvancedMultipleRelations(entity: T, dto) {
-		for (let relation of this.getAdvancedMultipleRelations(dto)) {
-			let input = dto[relation.name];
+		for (const relation of this.getAdvancedMultipleRelations(dto)) {
+			const input = dto[relation.name];
 
 			if (!input?.length) {
 				continue;
@@ -287,11 +292,11 @@ export class CrudService<T> extends EntityService<T> {
 				continue;
 			}
 
-			let existingEntities = entity ? await entity[`get${utils.ucFirst(relation.name)}`]() : [];
+			const existingEntities = entity ? await entity[`get${utils.ucFirst(relation.name)}`]() : [];
 			const ids = input.filter((v) => v.id).map((v) => v.id);
 			const entitiesToRemove = existingEntities.filter((v) => !ids.includes(v.id));
 
-			for (let entityToRemove of entitiesToRemove) {
+			for (const entityToRemove of entitiesToRemove) {
 				await entityToRemove.destroy();
 			}
 
@@ -300,14 +305,14 @@ export class CrudService<T> extends EntityService<T> {
 					.filter((v) => v.id)
 					.map(async (values) => {
 						let link: Model = existingEntities.find((v) => v.id === values.id);
-						for (let [key, value] of Object.entries(values)) {
+						for (const [key, value] of Object.entries(values)) {
 							if (key !== 'id') {
 								link[key] = value;
 							}
 						}
 						link = await link.save();
 
-						for (let linkRelation of this.getMultipleRelations(association.target)) {
+						for (const linkRelation of this.getMultipleRelations(association.target)) {
 							if (values[linkRelation.name]) {
 								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
 									values[linkRelation.name] ?? [],
@@ -321,12 +326,12 @@ export class CrudService<T> extends EntityService<T> {
 				input
 					.filter((v) => !v.id)
 					.map(async (values) => {
-						let link: Model = await association.target.create({
+						const link: Model = await association.target.create({
 							[utils.snakeCaseToCamel(association.foreignKey)]: entity['id'],
 							...values,
 						});
 
-						for (let linkRelation of this.getMultipleRelations(association.target)) {
+						for (const linkRelation of this.getMultipleRelations(association.target)) {
 							if (values[linkRelation.name]) {
 								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
 									values[linkRelation.name],
@@ -358,7 +363,7 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	protected async updateUploadsHelper(uploads, files, dto, entity) {
-		for (let upload of uploads) {
+		for (const upload of uploads) {
 			await this.upload.createOrUpdate({
 				propName: upload.name,
 				files,
@@ -431,15 +436,13 @@ export class CrudService<T> extends EntityService<T> {
 							});
 
 							if (entitiesToUpdate.length) {
-								const [_, updateResult] = await association.target
-									.unscoped()
-									.update(
-										{ [field]: isActive ? trueValue : falsyValue },
-										{
-											where: { id: { [Op.in]: entitiesToUpdate.map((v) => v.id) } },
-											returning: true,
-										},
-									);
+								const [_, updateResult] = await association.target.unscoped().update(
+									{ [field]: isActive ? trueValue : falsyValue },
+									{
+										where: { id: { [Op.in]: entitiesToUpdate.map((v) => v.id) } },
+										returning: true,
+									},
+								);
 								entities = updateResult;
 							}
 
@@ -551,7 +554,7 @@ export class CrudService<T> extends EntityService<T> {
 		}
 
 		const files = {};
-		for (let requestedFile of requestedFiles) {
+		for (const requestedFile of requestedFiles) {
 			if (!files[requestedFile.fieldname]) {
 				files[requestedFile.fieldname] = [];
 			}

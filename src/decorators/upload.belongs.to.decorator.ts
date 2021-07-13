@@ -3,7 +3,7 @@ import { BelongsTo } from 'sequelize-typescript';
 import { Upload } from '../upload/models/upload.model';
 import { utils } from '../utils';
 
-export function UploadBelongsToDecorator(modelFunc: () => Object = () => Upload) {
+export function UploadBelongsToDecorator(modelFunc: () => Record<string, any> = () => Upload) {
 	return function (target, propertyKey, descriptor?) {
 		const decorators = [
 			BelongsTo(modelFunc as any, {

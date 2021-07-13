@@ -21,7 +21,7 @@ export function AdvancedObjectMultipleRelationDecorator({
 	minCount = 0,
 	maxCount = Infinity,
 }: {
-	schema?: object;
+	schema?: Record<string, any>;
 	unique?: string[];
 	minCount?: number;
 	maxCount?: number;

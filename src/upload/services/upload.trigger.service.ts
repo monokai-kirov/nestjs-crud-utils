@@ -25,7 +25,7 @@ export class UploadTriggerService {
 		await this.removeTriggersAndFunctions();
 		await this.createUploadRemovingTriggerAndEventListener();
 
-		for (let crudModel of uploadTriggerModels) {
+		for (const crudModel of uploadTriggerModels) {
 			await this.createRemovingTriggers(crudModel);
 		}
 	}
@@ -148,7 +148,7 @@ export class UploadTriggerService {
 			});
 
 		if (tables.length) {
-			for (let { tableName, uploadKeys } of tables) {
+			for (const { tableName, uploadKeys } of tables) {
 				await this.createTrigger(
 					tableName,
 					`${uploadKeys
@@ -163,7 +163,7 @@ export class UploadTriggerService {
 		}
 	}
 
-	private async createTrigger(tableName: string, functionBody: string, when: string = 'AFTER') {
+	private async createTrigger(tableName: string, functionBody: string, when = 'AFTER') {
 		const functionName = `public.${tableName}_before_delete`;
 		const triggerName = `${tableName}_removing_trigger`;
 

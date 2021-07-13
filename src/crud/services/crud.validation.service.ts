@@ -26,7 +26,7 @@ export class CrudValidationService<T> {
 			await this.validateUploadCreateRequest(context, dto, normalizedFiles);
 		}
 
-		let { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
+		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
 			null,
 			dto,
 			normalizedFiles,
@@ -76,7 +76,7 @@ export class CrudValidationService<T> {
 			await this.validateUploadUpdateRequest(context, id, dto, normalizedFiles);
 		}
 
-		let { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
+		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
 			id,
 			dto,
 			normalizedFiles,
@@ -110,7 +110,7 @@ export class CrudValidationService<T> {
 	}
 
 	protected async validateRelationsHelper(context: CrudService<T>, dto, model?) {
-		for (let singleRelation of context.getSingleRelations(model)) {
+		for (const singleRelation of context.getSingleRelations(model)) {
 			await context.validateOptionalId(dto[singleRelation.name], {
 				model: singleRelation.model,
 			});
@@ -118,7 +118,7 @@ export class CrudValidationService<T> {
 
 		const advancedMultipleRelations = context.getAdvancedMultipleRelations(dto).map((v) => v.name);
 
-		for (let multipleRelation of context.getMultipleRelations(model)) {
+		for (const multipleRelation of context.getMultipleRelations(model)) {
 			if (!advancedMultipleRelations.includes(multipleRelation.name)) {
 				await context.validateOptionalIds(dto[multipleRelation.name], {
 					model: multipleRelation.model,
@@ -132,7 +132,7 @@ export class CrudValidationService<T> {
 		entityId: string | null,
 		dto,
 	) {
-		for (let relation of context.getAdvancedMultipleRelations(dto)) {
+		for (const relation of context.getAdvancedMultipleRelations(dto)) {
 			let input = dto[relation.name];
 			const count = input?.length ?? 0;
 
@@ -179,7 +179,7 @@ export class CrudValidationService<T> {
 					chunk = await context.validateDto(relation.schema, chunk);
 				}
 
-				for (let relationToValidate of relationsToValidate) {
+				for (const relationToValidate of relationsToValidate) {
 					if (!relation.unique.includes(relationToValidate.identifier)) {
 						await context.validateOptionalId(chunk[relationToValidate.identifier], {
 							model: relationToValidate.model,
@@ -188,7 +188,7 @@ export class CrudValidationService<T> {
 				}
 			}
 
-			for (let relationToValidate of relationsToValidate) {
+			for (const relationToValidate of relationsToValidate) {
 				if (relation.unique.includes(relationToValidate.identifier)) {
 					const ids = input.map((v) => v[relationToValidate.identifier]).filter((v) => v);
 					await context.validateOptionalIds(ids, { model: relationToValidate.model });
@@ -216,7 +216,7 @@ export class CrudValidationService<T> {
 				};
 			});
 
-		for (let relationName of context.getConflictRelations()) {
+		for (const relationName of context.getConflictRelations()) {
 			const hit = associations.find((v) => v.key === relationName);
 			if (!hit) {
 				continue;
@@ -268,7 +268,7 @@ export class CrudValidationService<T> {
 	 * Uploads
 	 */
 	public async validateUploadCreateRequest(context: CrudService<T>, dto, files) {
-		for (let upload of context.getUploads(dto)) {
+		for (const upload of context.getUploads(dto)) {
 			await context.upload.validateRequest({
 				propName: upload.name,
 				type: upload.type,
@@ -306,7 +306,7 @@ export class CrudValidationService<T> {
 		dto,
 		entity,
 	) {
-		for (let upload of uploads) {
+		for (const upload of uploads) {
 			await context.upload.validateRequest({
 				propName: upload.name,
 				type: upload.type,

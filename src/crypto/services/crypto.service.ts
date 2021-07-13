@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const bcrypt = require('bcrypt');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const crypto = require('crypto');
 
 @Injectable()
@@ -31,7 +33,7 @@ export class CryptoService {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
-	public generateHash(length: number = 40): string {
+	public generateHash(length = 40): string {
 		return crypto.randomBytes(length).toString('hex');
 	}
 }

@@ -8,8 +8,8 @@ export class CorrectionService<T> {
 		context: EntityService<T>,
 		unscopedInclude: boolean,
 		include: Include,
-		where: Object,
-		optimizeInclude: boolean = false,
+		where: Record<string, any>,
+		optimizeInclude = false,
 	) {
 		if (!include) {
 			return [];
@@ -60,7 +60,7 @@ export class CorrectionService<T> {
 		context: EntityService<T>,
 		include,
 		outerWhere: string[],
-		optimizeInclude: boolean = false,
+		optimizeInclude = false,
 	) {
 		const parent = context.__crudModel__.prototype.constructor;
 		return include.all === true
@@ -245,7 +245,7 @@ export class CorrectionService<T> {
 			value['target']['_scope'] &&
 			value['target']['_scope']['order']
 		) {
-			for (let chunk of value['target']['_scope']['order']) {
+			for (const chunk of value['target']['_scope']['order']) {
 				if (chunk[0] === 'createdAt' || chunk[0] === 'updatedAt') {
 					continue;
 				}
@@ -328,7 +328,7 @@ export class CorrectionService<T> {
 		let usedModel = model ?? context.__crudModel__;
 		usedModel = unscoped ? usedModel.unscoped() : usedModel;
 
-		for (let additionalScope of additionalScopes) {
+		for (const additionalScope of additionalScopes) {
 			if (usedModel._scopeNames.includes(additionalScope)) {
 				usedModel = usedModel.scope(additionalScope);
 			}

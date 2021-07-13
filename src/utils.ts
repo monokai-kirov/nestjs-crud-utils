@@ -41,7 +41,7 @@ class Utils {
 
 		return Object.keys(obj).reduce(
 			(accumulator, key) => {
-				let value = obj[key];
+				const value = obj[key];
 				let result;
 
 				if (typeof value === 'string') {
@@ -104,7 +104,7 @@ class Utils {
 	}
 
 	public async releaseMutex(mutexStore, keyStore = mutexStore) {
-		let key = keyStore['__mutexKey__'];
+		const key = keyStore['__mutexKey__'];
 
 		if (key && mutexStore[key]) {
 			await mutexStore[key].release();

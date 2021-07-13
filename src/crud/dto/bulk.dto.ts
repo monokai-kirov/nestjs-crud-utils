@@ -5,5 +5,5 @@ export class BulkDto {
 	@ApiProperty({ description: `@IsArray(), @IsJSON({ each: true })` })
 	@IsArray()
 	@IsObject({ each: true })
-	bulk: Object[];
+	bulk: Record<string, any>[];
 }

@@ -7,13 +7,21 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { utils } from '../../utils';
 import { config } from '../../config';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const fsExtra = require('fs-extra');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const extFs = require('extfs');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const mkdirp = require('mkdirp');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const sharp = require('sharp');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ffmpeg = require('fluent-ffmpeg');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ffmpeg_static = require('ffmpeg-static');
 
 export type UploadParam = {
@@ -148,7 +156,7 @@ export class UploadService {
 				? existingFiles
 				: [existingFiles]
 			: [];
-		let handledRemainingFilesIds = remainingFilesIds
+		const handledRemainingFilesIds = remainingFilesIds
 			? Array.isArray(remainingFilesIds)
 				? remainingFilesIds
 				: [remainingFilesIds]

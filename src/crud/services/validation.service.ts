@@ -110,7 +110,7 @@ export class ValidationService<T> {
 			unscopedInclude = context.entityOptions.unscopedInclude,
 			additionalScopes = context.entityOptions.additionalScopes,
 		} = {},
-	) {
+	): Promise<void> {
 		if (!Array.isArray(ids) || !ids.length) {
 			throw new BadRequestException(
 				`Array.isArray(ids), ids.length !== 0 ${context.getEntityNameByModel(model)}`,
@@ -137,7 +137,7 @@ export class ValidationService<T> {
 			unscopedInclude = context.entityOptions.unscopedInclude,
 			additionalScopes = context.entityOptions.additionalScopes,
 		} = {},
-	) {
+	): Promise<void> {
 		if (ids) {
 			if (!Array.isArray(ids)) {
 				throw new BadRequestException(`Array.isArray(ids) ${context.getEntityNameByModel(model)}`);
@@ -159,7 +159,7 @@ export class ValidationService<T> {
 		context: EntityService<T>,
 		ids: string[],
 		{ where, include, model, unscoped, unscopedInclude, additionalScopes },
-	) {
+	): Promise<void> {
 		if (ids.some((id) => !isUUID(id, '4'))) {
 			throw new BadRequestException(`isUUID(id, '4') ${context.getEntityNameByModel(model)}`);
 		}
@@ -191,7 +191,7 @@ export class ValidationService<T> {
 		offsetInRequest,
 		limitInRequest,
 		totalCount,
-	) {
+	): { offset: number; limit: number } {
 		const offset = parseInt(offsetInRequest as any);
 		const limit = parseInt(limitInRequest as any);
 
@@ -260,7 +260,7 @@ export class ValidationService<T> {
 		valueTransform,
 	}: ValidateAndParseJsonInput) {
 		try {
-			let parsedJson = typeof input === 'object' && input !== null ? input : JSON.parse(input);
+			const parsedJson = typeof input === 'object' && input !== null ? input : JSON.parse(input);
 
 			if (
 				Array.isArray(parsedJson) ||
@@ -296,7 +296,7 @@ export class ValidationService<T> {
 
 		return input.map((item) => {
 			try {
-				let parsedJson = typeof item === 'object' && item !== null ? item : JSON.parse(item);
+				const parsedJson = typeof item === 'object' && item !== null ? item : JSON.parse(item);
 
 				if (
 					Array.isArray(parsedJson) ||
@@ -306,7 +306,7 @@ export class ValidationService<T> {
 					throw new BadRequestException(errorMessage);
 				}
 
-				for (let key of uuids) {
+				for (const key of uuids) {
 					if (!isUUID(parsedJson[key])) {
 						throw new BadRequestException(errorMessage);
 					}

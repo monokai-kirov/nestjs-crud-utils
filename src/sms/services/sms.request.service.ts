@@ -6,6 +6,7 @@ import { SmsRequest } from '../models/sms.request.model';
 import { config } from '../../config';
 import { utils } from '../../utils';
 import { ConfigService } from '@nestjs/config';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const SMSru = require('sms_ru');
 
 export interface SmsResponse {

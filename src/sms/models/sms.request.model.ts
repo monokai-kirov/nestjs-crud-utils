@@ -15,5 +15,5 @@ export class SmsRequest extends Model {
 	hash: string;
 
 	@Column({ type: DataType.JSONB, allowNull: false })
-	fingerprint: Object;
+	fingerprint: Record<string, any>;
 }
