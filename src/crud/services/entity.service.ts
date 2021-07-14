@@ -202,10 +202,6 @@ export class EntityService<T> {
 		additionalScopes?: string[];
 		[key: string]: any;
 	} = {}): Promise<T | null> {
-		if (!Object.keys(where).length) {
-			throw new Error('Укажите where');
-		}
-
 		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findOne({
 			where,
 			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
