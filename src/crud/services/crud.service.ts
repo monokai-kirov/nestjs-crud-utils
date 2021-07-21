@@ -10,6 +10,7 @@ import { config } from '../../config';
 import { plainToClass } from 'class-transformer';
 import { Upload } from '../../upload/models/upload.model';
 import { UploadParam } from '../../upload/services/upload.service';
+import { Request } from 'express';
 
 export type CrudOptions = {
 	withDtoValidation?: boolean;
@@ -40,7 +41,7 @@ export class CrudService<T> extends EntityService<T> {
 	public getDtoType(dto) {
 		return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
 	}
-	protected async fillDto(id: string | null, dto): Promise<Record<string, any>> {
+	protected async fillDto(id: string | null, dto, req: Request): Promise<Record<string, any>> {
 		return dto;
 	}
 	protected getIncludeOptions(): Include {
@@ -55,16 +56,26 @@ export class CrudService<T> extends EntityService<T> {
 			)
 			.map(([key, value]: any) => key);
 	}
-	public async validateRequest(id: string | null, dto, files, req): Promise<{ dto; files }> {
+	public async validateRequest(
+		id: string | null,
+		dto,
+		files,
+		req: Request,
+	): Promise<{ dto; files }> {
 		return { dto, files };
 	}
-	public async validateCreateRequest(dto, files, req): Promise<{ dto; files }> {
+	public async validateCreateRequest(dto, files, req: Request): Promise<{ dto; files }> {
 		return { dto, files };
 	}
-	public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto; files }> {
+	public async validateUpdateRequest(
+		id: string,
+		dto,
+		files,
+		req: Request,
+	): Promise<{ dto; files }> {
 		return { dto, files };
 	}
-	public async validateDeleteRequest(id: string, force?: boolean, req?): Promise<void> {}
+	public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
 	public getChildModel(dto) {
 		return null;
 	}
@@ -141,49 +152,55 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	public async create(dto, files): Promise<T> {
-		dto = await this.fillDto(null, dto);
+	public async create(dto, files, req: Request): Promise<T> {
+		dto = await this.fillDto(null, dto, req);
 		dto = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
+
 		let entity = this.__crudModel__.build();
-		entity = await this.updateProperties(entity, dto);
-		await this.updateRelations(entity, dto, files);
+		entity = await this.updateProperties(entity, dto, req);
+		await this.updateRelations(entity, dto, files, req);
 		await this.updateUploads(entity, dto, files);
+
 		if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
 			await this.updateActive(entity, dto);
 		}
 		return entity;
 	}
 
-	public async bulkCreate(dto) {
+	public async bulkCreate(dto, req: Request) {
 		for (let chunk of dto.bulk) {
 			if (this.crudOptions.withDtoValidation) {
 				chunk = await this.validateDto(this.getDtoType(chunk), chunk);
 			}
-			chunk = await this.fillDto(null, chunk);
+			chunk = await this.fillDto(null, chunk, req);
 			chunk = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), chunk) : chunk;
+
 			let entity = this.__crudModel__.build();
-			entity = await this.updateProperties(entity, chunk);
-			await this.updateRelations(entity, chunk, {});
+			entity = await this.updateProperties(entity, chunk, req);
+			await this.updateRelations(entity, chunk, {}, req);
+
 			if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
 				await this.updateActive(entity, chunk);
 			}
 		}
 	}
 
-	public async updateById(id: string, dto, files): Promise<T> {
-		dto = await this.fillDto(id, dto);
+	public async updateById(id: string, dto, files, req: Request): Promise<T> {
+		dto = await this.fillDto(id, dto, req);
 		dto = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
+
 		let entity = await this.findOneById(id, { include: [] });
-		entity = await this.updateProperties(entity, dto);
-		await this.updateRelations(entity, dto, files);
+		entity = await this.updateProperties(entity, dto, req);
+		await this.updateRelations(entity, dto, files, req);
 		await this.updateUploads(entity, dto, files);
+
 		if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
 			await this.updateActive(entity, dto);
 		}
 		return entity;
 	}
 
-	protected async updateProperties(entity: T, dto): Promise<T> {
+	protected async updateProperties(entity: T, dto, req: Request): Promise<T> {
 		const parentSingleRelations = this.getSingleRelations().map((v) => v.name);
 		const parentMultipleRelations = this.getMultipleRelations().map((v) => v.name);
 		const uploads = this.getUploads(dto).map((v) => v.name);
@@ -218,7 +235,7 @@ export class CrudService<T> extends EntityService<T> {
 		return (entity as any).save();
 	}
 
-	protected async updateRelations(entity: T, dto, files) {
+	protected async updateRelations(entity: T, dto, files, req: Request) {
 		const advancedMultipleRelations = this.getAdvancedMultipleRelations(dto).map((v) => v.name);
 
 		for (const relation of this.getMultipleRelations()) {
@@ -229,13 +246,13 @@ export class CrudService<T> extends EntityService<T> {
 
 		const childModel = this.getChildModel(dto);
 		if (childModel) {
-			await this.updateChildRelations(childModel, entity, dto);
+			await this.updateChildRelations(childModel, entity, dto, req);
 		}
 
-		await this.updateAdvancedMultipleRelations(entity, dto);
+		await this.updateAdvancedMultipleRelations(entity, dto, req);
 	}
 
-	protected async updateChildRelations(childModel, entity, dto) {
+	protected async updateChildRelations(childModel, entity, dto, req: Request) {
 		let childEntity = await childModel.findOne({
 			where: { [this.getChildModelKey()]: entity.id },
 		});
@@ -279,7 +296,7 @@ export class CrudService<T> extends EntityService<T> {
 		}
 	}
 
-	protected async updateAdvancedMultipleRelations(entity: T, dto) {
+	protected async updateAdvancedMultipleRelations(entity: T, dto, req: Request) {
 		for (const relation of this.getAdvancedMultipleRelations(dto)) {
 			const input = dto[relation.name];
 
@@ -386,7 +403,7 @@ export class CrudService<T> extends EntityService<T> {
 		linkedIds: string | string[],
 		dto,
 		processedManyToMany: any[],
-	) {
+	): Promise<void> {
 		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
 		const options = <ActiveUpdate>this.crudOptions.withActiveUpdate;
 		const isActive = options.calcActive ? options.calcActive(dto) : ((dto) => dto.isActive)(dto);
@@ -397,7 +414,7 @@ export class CrudService<T> extends EntityService<T> {
 
 		const childs = options.childs.map((v: any) => (v.model ? v.model : v));
 
-		return Promise.all(
+		await Promise.all(
 			Object.entries(model.associations)
 				.map(([key, value]: any) => value)
 				.filter((association) => associationTypes.includes(association.associationType))
@@ -516,7 +533,7 @@ export class CrudService<T> extends EntityService<T> {
 		return isLinked;
 	}
 
-	public async removeById(id: string) {
+	public async removeById(id: string): Promise<void> {
 		await this.crudModel.destroy({ where: { id } } as any);
 	}
 
@@ -563,7 +580,7 @@ export class CrudService<T> extends EntityService<T> {
 		return files;
 	}
 
-	public checkConflictRelations() {
+	public checkConflictRelations(): void {
 		const associations = Object.keys(this.__crudModel__.associations);
 		this.getConflictRelations().forEach((relation) => {
 			if (!associations.includes(relation)) {

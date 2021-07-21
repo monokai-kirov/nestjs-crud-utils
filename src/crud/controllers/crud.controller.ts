@@ -20,10 +20,15 @@ import { OptionalBooleanQueryValidationPipe } from '../../pipes/optional.boolean
 import { BulkDto } from '../dto/bulk.dto';
 import { CrudService } from '../services/crud.service';
 
+type CrudResponse = {
+	statusCode: number;
+	[key: string]: any;
+};
+
 export class CrudController {
 	protected readonly service: CrudService<any>;
 
-	constructor(service) {
+	constructor(service: CrudService<any>) {
 		this.service = service;
 	}
 
@@ -41,7 +46,7 @@ export class CrudController {
 		@Query('limit') limit?,
 		@Query('search') search?: string,
 		...rest
-	) {
+	): Promise<CrudResponse> {
 		return {
 			statusCode: 200,
 			...(await this.service.findWithPagination({ search, offset, limit })),
@@ -52,10 +57,15 @@ export class CrudController {
 	@UseInterceptors(AnyFilesInterceptor())
 	@ApiResponseDecorator([400, 201])
 	@Post()
-	async create(@Body() dto, @UploadedFiles() files = {}, @Req() req, ...rest) {
+	async create(
+		@Body() dto,
+		@UploadedFiles() files = {},
+		@Req() req,
+		...rest
+	): Promise<CrudResponse> {
 		const { dto: transformedDto, files: transformedFiles } =
 			await this.service.validateBeforeCreating(dto, files, req);
-		const entity = await this.service.create(transformedDto, transformedFiles);
+		const entity = await this.service.create(transformedDto, transformedFiles, req);
 		return {
 			statusCode: 201,
 			entity: await this.service.findAfterCreateOrUpdate(entity.id),
@@ -64,9 +74,9 @@ export class CrudController {
 
 	@ApiResponseDecorator([400, 201])
 	@Post('bulk')
-	async bulkCreate(@Body() dto: BulkDto, @Req() req, ...rest) {
+	async bulkCreate(@Body() dto: BulkDto, @Req() req, ...rest): Promise<CrudResponse> {
 		await this.service.validateBeforeBulkCreating(dto, req);
-		await this.service.bulkCreate(dto);
+		await this.service.bulkCreate(dto, req);
 		return {
 			statusCode: 201,
 		};
@@ -82,10 +92,10 @@ export class CrudController {
 		@UploadedFiles() files = {},
 		@Req() req,
 		...rest
-	) {
+	): Promise<CrudResponse> {
 		const { dto: transformedDto, files: transformedFiles } =
 			await this.service.validateBeforeUpdating(id, dto, files, req);
-		const entity = await this.service.updateById(id, transformedDto, transformedFiles);
+		const entity = await this.service.updateById(id, transformedDto, transformedFiles, req);
 		return {
 			statusCode: 200,
 			entity: await this.service.findAfterCreateOrUpdate(entity.id),
@@ -100,7 +110,7 @@ export class CrudController {
 		@Query('force', new OptionalBooleanQueryValidationPipe('force')) force?,
 		@Req() req?,
 		...rest
-	) {
+	): Promise<CrudResponse> {
 		await this.service.validateBeforeRemoving(id, force, req);
 		await this.service.removeById(id);
 		return {
