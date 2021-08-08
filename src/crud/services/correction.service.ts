@@ -2,7 +2,7 @@ import { isNotEmpty } from 'class-validator';
 import { Sequelize } from 'sequelize-typescript';
 import { EntityService, Include } from './entity.service';
 import { Op } from 'sequelize';
-import { defaultScopeOptions } from 'src/sequelize.options';
+import { defaultScopeOptions } from '../../sequelize.options';
 
 export class CorrectionService<T> {
 	public getCorrectInclude(
