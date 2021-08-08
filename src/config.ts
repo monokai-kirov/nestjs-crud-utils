@@ -3,7 +3,8 @@ import * as redisStore from 'cache-manager-ioredis';
 import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { createSafeRedisLeader } from 'safe-redis-leader';
 import { SequelizeOptions } from 'sequelize-typescript';
-import { defaultScopeOptions } from './sequelize.options';
+import { ThrottlerModuleOptions } from '@nestjs/throttler';
+import { CacheModuleOptions } from '@nestjs/common';
 
 export class Config {
 	protected redisClient = null;
@@ -28,19 +29,19 @@ export class Config {
 			});
 	}
 
-	public isDevelopment() {
+	public isDevelopment(): boolean {
 		return process.env.NODE_ENV === 'development';
 	}
 
-	public isProduction() {
+	public isProduction(): boolean {
 		return process.env.NODE_ENV === 'production';
 	}
 
-	public getCorsOrigin() {
+	public getCorsOrigin(): string {
 		return process.env.CORS_ORIGIN;
 	}
 
-	public getDatabaseOptions(sync = true) {
+	public getDatabaseOptions(sync = true): SequelizeOptions {
 		return {
 			dialect: 'postgres',
 			host: process.env.DB_HOST,
@@ -64,36 +65,35 @@ export class Config {
 			},
 			define: {
 				underscored: true,
-				defaultScope: defaultScopeOptions,
 			},
 		} as unknown as SequelizeOptions;
 	}
 
-	public async getAsyncDatabaseOptions() {
+	public async getAsyncDatabaseOptions(): Promise<SequelizeOptions> {
 		const isLeader = await this.isLeader();
 		return this.getDatabaseOptions(isLeader);
 	}
 
-	public getRedisClient() {
+	public getRedisClient(): Redis {
 		if (!this.redisClient) {
 			this.redisClient = new Redis(this.getRedisOptions());
 		}
 		return this.redisClient;
 	}
 
-	public getRedisOptions() {
+	public getRedisOptions(): { host: string; port: number } {
 		return {
 			host: process.env.REDIS_HOST,
 			port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
 		};
 	}
 
-	public async isLeader() {
+	public async isLeader(): Promise<boolean> {
 		const safeLeader = await this.safeLeader;
 		return safeLeader.isLeader();
 	}
 
-	public getCacheOptions(redefined = {}) {
+	public getCacheOptions(redefined = {}): CacheModuleOptions {
 		return {
 			store: redisStore,
 			...this.getRedisOptions(),
@@ -103,7 +103,7 @@ export class Config {
 		};
 	}
 
-	public getWsOptions() {
+	public getWsOptions(): Record<string, any> {
 		return {
 			transports: ['websocket'],
 			origins: process.env.WS_ORIGIN ?? '*:*',
@@ -113,11 +113,11 @@ export class Config {
 		};
 	}
 
-	public getWsPort() {
+	public getWsPort(): number {
 		return process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3030;
 	}
 
-	public getThrottlerOptions() {
+	public getThrottlerOptions(): ThrottlerModuleOptions {
 		return {
 			ttl: 60,
 			limit: 20,
@@ -125,7 +125,15 @@ export class Config {
 		};
 	}
 
-	public getUploadOptions() {
+	public getUploadOptions(): {
+		imageWidth: number;
+		folders: string[];
+		ALLOWED_PICTURE_MIMETYPES: string[];
+		ALLOWED_AUDIO_MIMETYPES: string[];
+		ALLOWED_VIDEO_MIMETYPES: string[];
+		ALLOWED_DOCUMENT_MIMETYPES: string[];
+		SUMMARY_SIZE_LIMIT: number;
+	} {
 		return {
 			imageWidth: 1000,
 			folders: ['upload'],
@@ -144,7 +152,7 @@ export class Config {
 		};
 	}
 
-	public getSentryOptions() {
+	public getSentryOptions(): { dsn: string; tracesSampleRate: number } {
 		return {
 			dsn: process.env.SENTRY_DSN,
 			tracesSampleRate: 1.0,

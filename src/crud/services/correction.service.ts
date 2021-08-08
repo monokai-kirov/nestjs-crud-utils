@@ -2,6 +2,7 @@ import { isNotEmpty } from 'class-validator';
 import { Sequelize } from 'sequelize-typescript';
 import { EntityService, Include } from './entity.service';
 import { Op } from 'sequelize';
+import { defaultScopeOptions } from 'src/sequelize.options';
 
 export class CorrectionService<T> {
 	public getCorrectInclude(
@@ -39,8 +40,10 @@ export class CorrectionService<T> {
 			return order;
 		}
 
-		if (unscoped && parent._scope?.order) {
+		if (parent._scope?.order) {
 			result = [...parent._scope.order];
+		} else {
+			result = [...defaultScopeOptions.order];
 		}
 
 		if (include.all === true) {
