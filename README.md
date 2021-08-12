@@ -301,7 +301,7 @@ export class AdminModule {}
  */
 ```
 
-## Handling advanced multiple links
+## Handling advanced multiple relations
 
 ```ts
 /**
@@ -356,7 +356,9 @@ export class UserLanguageWithSkill extends Model {
 export class UserDto {
 	// email, phone, ...etc
 
-	@AdvancedJSONMultipleRelationDecorator({
+	@AdvancedObjectMultipleRelationDecorator({
+		// for application/json
+		// @AdvancedJSONMultipleRelationDecorator({ // for multipart/form-data
 		schema: UserLanguageWithSkillDto,
 		unique: ['languageId'], // unique prop so that user can't use one language with different skills
 		minCount: 1, // is optional
