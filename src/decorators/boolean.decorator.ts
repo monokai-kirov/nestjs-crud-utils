@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export function BooleanDecorator() {
+export function BooleanDecorator(): ReturnType<typeof applyDecorators> {
 	return applyDecorators(
 		ApiProperty({ description: '@IsBoolean()' }),
 		IsBoolean(),

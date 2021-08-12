@@ -8,6 +8,7 @@ import { utils } from '../../utils';
 import { ConfigService } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const SMSru = require('sms_ru');
+import { Request } from 'express';
 
 export interface SmsResponse {
 	isSmsSent: boolean;
@@ -92,7 +93,7 @@ export class SmsRequestService extends EntityService<SmsRequest> {
 		await smsRequest.save();
 	}
 
-	public async validateRequest(req): Promise<void> {
+	public async validateRequest(req: Request): Promise<void> {
 		const todayMidnight = new Date();
 		todayMidnight.setHours(0, 0, 0, 0);
 		const tomorrowMidnight = new Date();

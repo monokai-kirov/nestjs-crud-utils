@@ -11,7 +11,7 @@ export class CorrectionService<T> {
 		include: Include,
 		where: Record<string, any>,
 		optimizeInclude = false,
-	) {
+	): Include {
 		if (!include) {
 			return [];
 		}
@@ -29,10 +29,10 @@ export class CorrectionService<T> {
 		context: EntityService<T>,
 		order: any[] = [],
 		group: any,
-		include,
+		include: Include,
 		unscoped: boolean,
 		withLeafs = true,
-	) {
+	): any[] {
 		const parent = context.__crudModel__.prototype.constructor;
 		let result = [];
 
@@ -46,12 +46,14 @@ export class CorrectionService<T> {
 			result = [...defaultScopeOptions.order];
 		}
 
-		if (include.all === true) {
+		if (include['all'] === true) {
 			context
 				.getAllAssociations()
 				.map((child) => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
 		} else {
-			include.map((child) => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
+			(include as any[]).map((child) =>
+				this.addCorrectOrderHelper(parent, child, result, [], withLeafs),
+			);
 		}
 		return result;
 	}
@@ -61,19 +63,19 @@ export class CorrectionService<T> {
 	 */
 	public addCorrectRequiredAttributes(
 		context: EntityService<T>,
-		include,
+		include: Include,
 		outerWhere: string[],
 		optimizeInclude = false,
-	) {
+	): Include {
 		const parent = context.__crudModel__.prototype.constructor;
-		return include.all === true
+		return include['all'] === true
 			? context
 					.getAllAssociations()
 					.map((child) =>
 						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
 					)
 					.filter((v) => v)
-			: include
+			: (include as any[])
 					.map((child) =>
 						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
 					)
@@ -83,20 +85,20 @@ export class CorrectionService<T> {
 	/**
 	 * For grouping (prevent errors like '[column must appear in the GROUP BY clause or be used in an aggregate function]')
 	 */
-	public addEmptyAttributes(context: EntityService<T>, include) {
+	public addEmptyAttributes(context: EntityService<T>, include: Include): Include {
 		const parent = context.__crudModel__.prototype.constructor;
-		return include.all === true
+		return include['all'] === true
 			? context.getAllAssociations().map((child) => this.addEmptyAttributesHelper(parent, child))
-			: include.map((child) => this.addEmptyAttributesHelper(parent, child));
+			: (include as any[]).map((child) => this.addEmptyAttributesHelper(parent, child));
 	}
 
 	/**
 	 * For admin crud (default unscoped: true)
 	 */
-	public addUnscopedAttributes(context: EntityService<T>, include) {
-		return include.all === true
+	public addUnscopedAttributes(context: EntityService<T>, include: Include): Include {
+		return include['all'] === true
 			? context.getAllAssociations().map((child) => this.addUnscopedAttributesHelper(child))
-			: include.map((child) => this.addUnscopedAttributesHelper(child));
+			: (include as any[]).map((child) => this.addUnscopedAttributesHelper(child));
 	}
 
 	/**
@@ -160,12 +162,12 @@ export class CorrectionService<T> {
 	}
 
 	protected addCorrectRequiredAttributesHelper(
-		parent: any,
-		child: any,
+		parent: Record<string, any>,
+		child: Record<string, any>,
 		outerWhere: string[],
 		levels: string[],
 		optimizeInclude: boolean,
-	) {
+	): Record<string, any> {
 		const getLinkName = (parent, childModel) =>
 			parent?.associations
 				? Object.entries(parent.associations)
@@ -236,7 +238,7 @@ export class CorrectionService<T> {
 		order: any[],
 		levels: any[] = [],
 		withLeafs = true,
-	) {
+	): void {
 		const childModel = child.model ?? child;
 		const [key, value] = Object.entries(parent.associations).find(
 			([key, value]: any) => value.target === childModel,
@@ -268,7 +270,10 @@ export class CorrectionService<T> {
 		}
 	}
 
-	protected addEmptyAttributesHelper(parent: any, child: any) {
+	protected addEmptyAttributesHelper(
+		parent: Record<string, any>,
+		child: Record<string, any>,
+	): Record<string, any> {
 		const getManyToManyAssociations = (prop) =>
 			prop?.associations
 				? Object.entries(prop.associations)
@@ -306,7 +311,7 @@ export class CorrectionService<T> {
 		}
 	}
 
-	protected addUnscopedAttributesHelper(child: any) {
+	protected addUnscopedAttributesHelper(child: any): Record<string, any> {
 		if (!child.model) {
 			return {
 				model: child.unscoped(),

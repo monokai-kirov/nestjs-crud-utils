@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { config } from '../../config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodemailer = require('nodemailer');
 
@@ -20,15 +21,7 @@ export class EmailService {
 	private transporter;
 
 	constructor(private readonly configService: ConfigService) {
-		this.transporter = nodemailer.createTransport({
-			host: 'smtp.yandex.ru',
-			port: 465,
-			secure: true,
-			auth: {
-				user: configService.get('EMAIL_LOGIN'),
-				pass: configService.get('EMAIL_PASSWORD'),
-			},
-		});
+		this.transporter = nodemailer.createTransport(config.getEmailOptions());
 	}
 
 	public async send({
@@ -56,13 +49,15 @@ export class EmailService {
 		email,
 		title,
 		message,
+		from = this.configService.get('EMAIL_LOGIN'),
 	}: {
 		email: string;
 		title: string;
 		message: string;
+		from?: string;
 	}): EmailOptions {
 		return {
-			from: this.configService.get('EMAIL_LOGIN'),
+			from,
 			to: email,
 			subject: title,
 			text: message,

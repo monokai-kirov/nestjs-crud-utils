@@ -32,7 +32,7 @@ export class UploadValidationService {
 		entity?: any | null;
 		minCount?: number;
 		maxCount?: number;
-	}) {
+	}): Promise<void> {
 		const filesToValidate: MulterFile[] = files[propName] ?? [];
 		const { handledRemainingFilesIds, handledWaitingForLinkingIds } =
 			await context.getExistingAndRemaining({ entity, propName, remainingFilesIds: dto[propName] });

@@ -7,17 +7,21 @@ import { EntityService } from './entity.service';
 export interface ValidateAndParseJsonInput {
 	input;
 	errorMessage: string;
-	keyConstraint?: Function;
-	valueConstraint?: Function;
-	keyTransform?: Function;
-	valueTransform?: Function;
+	keyConstraint?: (key: string) => boolean;
+	valueConstraint?: (value: any) => boolean;
+	keyTransform?: (key: any) => any;
+	valueTransform?: (value: any) => any;
 }
 
 export class ValidationService<T> {
-	public async validateDto(dtoType, dto, whitelist = true) {
+	public async validateDto(
+		dtoType: any,
+		dto: Record<string, any>,
+		whitelist = true,
+	): Promise<Record<string, any>> {
 		try {
 			const parsedDto = await plainToClass(dtoType, { ...dto });
-			await validateOrReject(parsedDto, { whitelist });
+			await validateOrReject(parsedDto as any, { whitelist });
 			return parsedDto;
 		} catch (errors) {
 			throw new BadRequestException({
@@ -220,7 +224,7 @@ export class ValidationService<T> {
 		keyTransform = (key) => key,
 		valueConstraint = (value) => isString(value),
 		valueTransform = (value) => value,
-	}: ValidateAndParseJsonInput) {
+	}: ValidateAndParseJsonInput): Record<string, any> {
 		return this.validateAndParseJsonHelper({
 			input,
 			errorMessage,
@@ -238,7 +242,7 @@ export class ValidationService<T> {
 		keyTransform = (key) => key,
 		valueConstraint = (value) => isString(value),
 		valueTransform = (value) => value,
-	}: ValidateAndParseJsonInput) {
+	}: ValidateAndParseJsonInput): Record<string, any> {
 		return input.map((item) =>
 			this.validateAndParseJsonHelper({
 				input: item,
@@ -258,7 +262,7 @@ export class ValidationService<T> {
 		valueConstraint,
 		keyTransform,
 		valueTransform,
-	}: ValidateAndParseJsonInput) {
+	}: ValidateAndParseJsonInput): Record<string, any> {
 		try {
 			const parsedJson = typeof input === 'object' && input !== null ? input : JSON.parse(input);
 
@@ -291,7 +295,7 @@ export class ValidationService<T> {
 		errorMessage: string;
 		uuids?: string[];
 		restKeys?: string[];
-	}) {
+	}): Record<string, any> {
 		const allKeys = [...uuids, ...restKeys];
 
 		return input.map((item) => {

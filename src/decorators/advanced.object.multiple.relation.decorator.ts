@@ -1,8 +1,12 @@
+import { applyDecorators } from '@nestjs/common';
 import { OptionalArrayOfObjectsDecorator } from './optional.array.of.objects.decorator';
 
 export const ADVANCED_MULTIPLE_RELATON_METADATA_KEY = '__advanced_multiple_relations__';
 
-export const addAdvancedMultipleRelationToDtoMetadata = (dto, obj) => {
+export const addAdvancedMultipleRelationToDtoMetadata = (
+	dto: Record<string, any>,
+	obj: Record<string, any>,
+): void => {
 	let relations = Reflect.getMetadata(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, dto);
 
 	if (!relations) {
@@ -25,7 +29,7 @@ export function AdvancedObjectMultipleRelationDecorator({
 	unique?: string[];
 	minCount?: number;
 	maxCount?: number;
-} = {}) {
+} = {}): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		addAdvancedMultipleRelationToDtoMetadata(target.constructor.prototype, {
 			name: propertyKey,

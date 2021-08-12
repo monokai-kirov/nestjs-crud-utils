@@ -19,6 +19,7 @@ import { ApiResponseDecorator } from '../../decorators/api.response.decorator';
 import { OptionalBooleanQueryValidationPipe } from '../../pipes/optional.boolean.query.validation.pipe';
 import { BulkDto } from '../dto/bulk.dto';
 import { CrudService } from '../services/crud.service';
+import { Request } from 'express';
 
 type CrudResponse = {
 	statusCode: number;
@@ -43,9 +44,9 @@ export class CrudController {
 	@Get()
 	async get(
 		@Query('offset', new DefaultValuePipe(0)) offset: number,
-		@Query('limit') limit?,
+		@Query('limit') limit?: string | number,
 		@Query('search') search?: string,
-		...rest
+		...rest: any[]
 	): Promise<CrudResponse> {
 		return {
 			statusCode: 200,
@@ -58,10 +59,10 @@ export class CrudController {
 	@ApiResponseDecorator([400, 201])
 	@Post()
 	async create(
-		@Body() dto,
+		@Body() dto: Record<string, any>,
 		@UploadedFiles() files = {},
-		@Req() req,
-		...rest
+		@Req() req: Request,
+		...rest: any[]
 	): Promise<CrudResponse> {
 		const { dto: transformedDto, files: transformedFiles } =
 			await this.service.validateBeforeCreating(dto, files, req);
@@ -74,7 +75,11 @@ export class CrudController {
 
 	@ApiResponseDecorator([400, 201])
 	@Post('bulk')
-	async bulkCreate(@Body() dto: BulkDto, @Req() req, ...rest): Promise<CrudResponse> {
+	async bulkCreate(
+		@Body() dto: BulkDto,
+		@Req() req: Request,
+		...rest: any[]
+	): Promise<CrudResponse> {
 		await this.service.validateBeforeBulkCreating(dto, req);
 		await this.service.bulkCreate(dto, req);
 		return {
@@ -88,10 +93,10 @@ export class CrudController {
 	@Put(':id')
 	async update(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-		@Body() dto,
+		@Body() dto: Record<string, any>,
 		@UploadedFiles() files = {},
-		@Req() req,
-		...rest
+		@Req() req: Request,
+		...rest: any[]
 	): Promise<CrudResponse> {
 		const { dto: transformedDto, files: transformedFiles } =
 			await this.service.validateBeforeUpdating(id, dto, files, req);
@@ -108,8 +113,8 @@ export class CrudController {
 	async delete(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Query('force', new OptionalBooleanQueryValidationPipe('force')) force?,
-		@Req() req?,
-		...rest
+		@Req() req?: Request,
+		...rest: any[]
 	): Promise<CrudResponse> {
 		await this.service.validateBeforeRemoving(id, force, req);
 		await this.service.removeById(id);

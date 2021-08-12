@@ -3,13 +3,19 @@ import { plainToClass } from 'class-transformer';
 import { isEmpty } from 'class-validator';
 import { Upload } from '../../upload/models/upload.model';
 import { utils } from '../../utils';
-import { CrudService } from './crud.service';
+import { CrudService, Files } from './crud.service';
+import { Request } from 'express';
 
 export class CrudValidationService<T> {
 	/**
 	 * For controller
 	 */
-	public async validateBeforeCreating(context: CrudService<T>, dto, files, req) {
+	public async validateBeforeCreating(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<{ dto: any; files: any; [key: string]: any }> {
 		if (context.crudOptions.withDtoValidation) {
 			dto = await context.validateDto(context.getDtoType(dto), dto);
 		}
@@ -39,7 +45,11 @@ export class CrudValidationService<T> {
 		};
 	}
 
-	public async validateBeforeBulkCreating(context: CrudService<T>, dto, req) {
+	public async validateBeforeBulkCreating(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		req: Request,
+	): Promise<void> {
 		for (let chunk of dto.bulk) {
 			if (context.crudOptions.withDtoValidation) {
 				chunk = await context.validateDto(context.getDtoType(dto), chunk);
@@ -57,7 +67,13 @@ export class CrudValidationService<T> {
 		}
 	}
 
-	public async validateBeforeUpdating(context: CrudService<T>, id: string, dto, files, req) {
+	public async validateBeforeUpdating(
+		context: CrudService<T>,
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<{ dto: any; files: any; [key: string]: any }> {
 		await context.validateMandatoryId(id);
 
 		if (context.crudOptions.withDtoValidation) {
@@ -89,7 +105,12 @@ export class CrudValidationService<T> {
 		};
 	}
 
-	public async validateBeforeRemoving(context: CrudService<T>, id: string, force?: boolean, req?) {
+	public async validateBeforeRemoving(
+		context: CrudService<T>,
+		id: string,
+		force?: boolean,
+		req?: Request,
+	): Promise<void> {
 		await context.validateMandatoryId(id);
 		if (!force) {
 			await this.validateConflictRelations(context, id);
@@ -100,7 +121,7 @@ export class CrudValidationService<T> {
 	/**
 	 * Relations
 	 */
-	public async validateRelations(context: CrudService<T>, dto) {
+	public async validateRelations(context: CrudService<T>, dto: Record<string, any>): Promise<void> {
 		await this.validateRelationsHelper(context, dto);
 
 		const childModel = context.getChildModel(dto);
@@ -109,7 +130,11 @@ export class CrudValidationService<T> {
 		}
 	}
 
-	protected async validateRelationsHelper(context: CrudService<T>, dto, model?) {
+	protected async validateRelationsHelper(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		model?,
+	): Promise<void> {
 		for (const singleRelation of context.getSingleRelations(model)) {
 			await context.validateOptionalId(dto[singleRelation.name], {
 				model: singleRelation.model,
@@ -130,8 +155,8 @@ export class CrudValidationService<T> {
 	public async validateAdvancedMultipleRelations(
 		context: CrudService<T>,
 		entityId: string | null,
-		dto,
-	) {
+		dto: Record<string, any>,
+	): Promise<any> {
 		for (const relation of context.getAdvancedMultipleRelations(dto)) {
 			let input = dto[relation.name];
 			const count = input?.length ?? 0;
@@ -200,7 +225,7 @@ export class CrudValidationService<T> {
 		return dto;
 	}
 
-	protected async validateConflictRelations(context: CrudService<T>, id: string) {
+	protected async validateConflictRelations(context: CrudService<T>, id: string): Promise<void> {
 		const associations = Object.entries(context.__crudModel__.associations)
 			.filter(
 				([key, value]: any) =>
@@ -267,7 +292,11 @@ export class CrudValidationService<T> {
 	/**
 	 * Uploads
 	 */
-	public async validateUploadCreateRequest(context: CrudService<T>, dto, files) {
+	public async validateUploadCreateRequest(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+	): Promise<void> {
 		for (const upload of context.getUploads(dto)) {
 			await context.upload.validateRequest({
 				propName: upload.name,
@@ -279,7 +308,12 @@ export class CrudValidationService<T> {
 		}
 	}
 
-	public async validateUploadUpdateRequest(context: CrudService<T>, id: string, dto, files) {
+	public async validateUploadUpdateRequest(
+		context: CrudService<T>,
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+	): Promise<void> {
 		const entity = await context.findOneById(id);
 		const parentUploads = context
 			.getUploads(dto)
@@ -302,10 +336,10 @@ export class CrudValidationService<T> {
 	protected async validateUploadUpdateRequestHelper(
 		context: CrudService<T>,
 		uploads,
-		files,
-		dto,
-		entity,
-	) {
+		files: Files,
+		dto: Record<string, any>,
+		entity: Record<string, any>,
+	): Promise<void> {
 		for (const upload of uploads) {
 			await context.upload.validateRequest({
 				propName: upload.name,
@@ -322,7 +356,11 @@ export class CrudValidationService<T> {
 	/**
 	 * Others
 	 */
-	protected async validateSameCodeIfNecessary(context: CrudService<T>, id: string | null, dto) {
+	protected async validateSameCodeIfNecessary(
+		context: CrudService<T>,
+		id: string | null,
+		dto: Record<string, any>,
+	): Promise<void> {
 		if (!isEmpty(dto.code)) {
 			const entityWithSameCode = await context.findOne({ where: { code: dto.code }, include: [] });
 			if (entityWithSameCode && entityWithSameCode['id'] !== id) {

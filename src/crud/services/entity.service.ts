@@ -14,38 +14,6 @@ export type EntityOptions = {
 export type Include = { all: boolean } | Record<string, any>[];
 
 export class EntityService<T> {
-	public get crudModel(): Model {
-		return this.correctionService.unscopedHelper(
-			this,
-			this.entityOptions.unscoped,
-			this.entityOptions.additionalScopes,
-		);
-	}
-	public get entityName(): string {
-		return this.__crudModel__.prototype.constructor.name;
-	}
-	public get tableName(): string {
-		return this.__crudModel__.getTableName();
-	}
-	public getEntityNameByModel(model?): string {
-		return model ? model.prototype.constructor.name : this.entityName;
-	}
-	public getMaxEntitiesPerPage(): number {
-		return 30;
-	}
-
-	/**
-	 * @Override
-	 */
-	protected getIncludeOptions(): Include {
-		return [];
-	}
-	protected getSearchingProps(): Array<
-		string | string[] | { property: string | string[]; transform: Function }
-	> {
-		return ['id', 'title'];
-	}
-
 	public static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {
 		unscoped: false,
 		unscopedInclude: false,
@@ -71,6 +39,36 @@ export class EntityService<T> {
 		this.checkIncludeOptions();
 	}
 
+	public get crudModel(): Model {
+		return this.correctionService.unscopedHelper(
+			this,
+			this.entityOptions.unscoped,
+			this.entityOptions.additionalScopes,
+		);
+	}
+	public get entityName(): string {
+		return this.__crudModel__.prototype.constructor.name;
+	}
+	public get tableName(): string {
+		return this.__crudModel__.getTableName();
+	}
+	public getEntityNameByModel(model?): string {
+		return model ? model.prototype.constructor.name : this.entityName;
+	}
+	public getMaxEntitiesPerPage(): number {
+		return 30;
+	}
+
+	protected getIncludeOptions(): Include {
+		return [];
+	}
+
+	protected getSearchingProps(): Array<
+		string | string[] | { property: string | string[]; transform: (value: any) => any }
+	> {
+		return ['id', 'title'];
+	}
+
 	/**
 	 * Finders
 	 */
@@ -91,7 +89,7 @@ export class EntityService<T> {
 		where?: Record<string, any>;
 		include?: Include;
 		offset?: number;
-		limit?: number;
+		limit?: string | number;
 		page?: number;
 		order?: any[];
 		unscoped?: boolean;
@@ -116,7 +114,7 @@ export class EntityService<T> {
 
 		let transformedOffset, transformedLimit;
 		if (page) {
-			transformedOffset = (page - 1) * limit;
+			transformedOffset = (page - 1) * (typeof limit === 'string' ? parseInt(limit) : limit);
 			transformedLimit = limit;
 		} else {
 			({ offset: transformedOffset, limit: transformedLimit } =
@@ -134,7 +132,7 @@ export class EntityService<T> {
 		};
 	}
 
-	protected addSearchToFindOptions(search, findOptions) {
+	protected addSearchToFindOptions(search: string, findOptions: Record<string, any>): void {
 		const searchWhere = [];
 
 		for (const option of this.getSearchingProps()) {
@@ -327,7 +325,11 @@ export class EntityService<T> {
 	/**
 	 * Validations
 	 */
-	public async validateDto(dtoType, dto, whitelist = true) {
+	public async validateDto(
+		dtoType: any,
+		dto: Record<string, any>,
+		whitelist = true,
+	): Promise<Record<string, any>> {
 		return this.validationService.validateDto(dtoType, dto, whitelist);
 	}
 
@@ -383,8 +385,8 @@ export class EntityService<T> {
 			unscopedInclude = this.entityOptions.unscopedInclude,
 			additionalScopes = this.entityOptions.additionalScopes,
 		} = {},
-	) {
-		return this.validationService.validateMandatoryIds(this, ids, {
+	): Promise<void> {
+		await this.validationService.validateMandatoryIds(this, ids, {
 			where,
 			include,
 			model,
@@ -404,8 +406,8 @@ export class EntityService<T> {
 			unscopedInclude = this.entityOptions.unscopedInclude,
 			additionalScopes = this.entityOptions.additionalScopes,
 		} = {},
-	) {
-		return this.validationService.validateOptionalIds(this, ids, {
+	): Promise<void> {
+		await this.validationService.validateOptionalIds(this, ids, {
 			where,
 			include,
 			model,
@@ -418,7 +420,7 @@ export class EntityService<T> {
 	/**
 	 * Relations
 	 */
-	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
+	public getSingleRelations(model?: Model): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>
@@ -432,7 +434,7 @@ export class EntityService<T> {
 			});
 	}
 
-	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
+	public getMultipleRelations(model?: Model): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>
@@ -447,7 +449,7 @@ export class EntityService<T> {
 			});
 	}
 
-	public getUploadRelations(model?): string[] {
+	public getUploadRelations(model?: Model): string[] {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>
@@ -457,13 +459,13 @@ export class EntityService<T> {
 			.map(([key, value]: any) => key);
 	}
 
-	public getAllAssociations() {
+	public getAllAssociations(): any {
 		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
 			return value.target.prototype.constructor;
 		});
 	}
 
-	public checkIncludeOptions() {
+	public checkIncludeOptions(): void {
 		const include = <any>this.getIncludeOptions();
 		if (isEmpty(include.all)) {
 			include.forEach((child) =>

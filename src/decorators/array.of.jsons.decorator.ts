@@ -2,7 +2,7 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import { ArrayNotEmpty, IsArray, IsJSON } from 'class-validator';
 
-export function ArrayOfJSONsDecorator(description = '') {
+export function ArrayOfJSONsDecorator(description = ''): ReturnType<typeof applyDecorators> {
 	return applyDecorators(
 		ApiProperty({
 			description: `@IsArray(), @ArrayNotEmpty(), @IsJSON({ each: true }); ${description}`,

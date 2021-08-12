@@ -6,7 +6,7 @@ import { utils } from '../utils';
  */
 @Injectable()
 export class WsMutexGuard implements CanActivate {
-	public async canActivate(context: ExecutionContext) {
+	public async canActivate(context: ExecutionContext): Promise<boolean> {
 		const ctx = context.switchToWs();
 		await utils.acquireMutex(
 			ctx.getClient().handshake,

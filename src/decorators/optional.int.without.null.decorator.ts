@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { applyDecorators, BadRequestException } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Allow, isInt } from 'class-validator';
 
-export function OptionalIntWithoutNullDecorator() {
+export function OptionalIntWithoutNullDecorator(): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		const decorators = [
 			ApiPropertyOptional(),
@@ -13,14 +13,14 @@ export function OptionalIntWithoutNullDecorator() {
 				if (value === undefined) {
 					return value;
 				} else if (value === null) {
-					throw new BadRequestException(`${propertyKey} !== null`);
+					throw new BadRequestException(`${String(propertyKey)} !== null`);
 				} else {
 					value = parseInt(value);
 					if (!isInt(value)) {
-						throw new BadRequestException(`@IsInt(${propertyKey})`);
+						throw new BadRequestException(`@IsInt(${String(propertyKey)})`);
 					}
 					if (value < 0) {
-						throw new BadRequestException(`${propertyKey} mustn't be negative`);
+						throw new BadRequestException(`${String(propertyKey)} mustn't be negative`);
 					}
 					return value;
 				}

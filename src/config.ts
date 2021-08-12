@@ -5,6 +5,8 @@ import { createSafeRedisLeader } from 'safe-redis-leader';
 import { SequelizeOptions } from 'sequelize-typescript';
 import { ThrottlerModuleOptions } from '@nestjs/throttler';
 import { CacheModuleOptions } from '@nestjs/common';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('dotenv').config();
 
 export class Config {
 	protected redisClient = null;
@@ -156,6 +158,28 @@ export class Config {
 		return {
 			dsn: process.env.SENTRY_DSN,
 			tracesSampleRate: 1.0,
+		};
+	}
+
+	public getEmailOptions(): {
+		host: string;
+		port: number;
+		secure: boolean;
+		auth: {
+			user: string;
+			pass: string;
+			[key: string]: any;
+		};
+		[key: string]: any;
+	} {
+		return {
+			host: 'smtp.yandex.ru',
+			port: 465,
+			secure: true,
+			auth: {
+				user: process.env.EMAIL_LOGIN,
+				pass: process.env.EMAIL_PASSWORD,
+			},
 		};
 	}
 }

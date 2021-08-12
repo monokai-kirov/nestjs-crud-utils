@@ -4,7 +4,7 @@ import { utils } from '../utils';
 
 @Catch()
 export class AllExceptionsFilter extends BaseExceptionFilter {
-	catch(exception: any, host: ArgumentsHost) {
+	catch(exception: any, host: ArgumentsHost): void {
 		const ctx = host.switchToHttp();
 		const response = ctx.getResponse();
 

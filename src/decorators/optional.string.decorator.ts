@@ -2,7 +2,10 @@ import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, MinLength, MaxLength } from 'class-validator';
 
-export function OptionalStringDecorator(minLength = 1, maxLength = 256) {
+export function OptionalStringDecorator(
+	minLength = 1,
+	maxLength = 256,
+): ReturnType<typeof applyDecorators> {
 	return applyDecorators(
 		ApiPropertyOptional(),
 		ApiProperty({

@@ -6,7 +6,7 @@ import { utils } from '../utils';
  */
 @Injectable()
 export class MutexGuard implements CanActivate {
-	public async canActivate(context: ExecutionContext) {
+	public async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request = context.switchToHttp().getRequest();
 		await utils.acquireMutex(request, `${request['user']['id']}:${context.getHandler().name}`);
 		return true;

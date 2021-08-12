@@ -10,7 +10,9 @@ import {
 	ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-export function ApiResponseDecorator(statuses: (number | { code: number; description: string })[]) {
+export function ApiResponseDecorator(
+	statuses: (number | { code: number; description: string })[],
+): ReturnType<typeof applyDecorators> {
 	return applyDecorators(
 		...statuses.map((input) => {
 			const statusCode = input['code'] ?? input;

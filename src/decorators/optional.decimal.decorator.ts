@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { applyDecorators, BadRequestException } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { Allow, isDecimal } from 'class-validator';
 
-export function OptionalDecimalDecorator() {
+export function OptionalDecimalDecorator(): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		const decorators = [
 			ApiPropertyOptional(),
@@ -15,7 +15,7 @@ export function OptionalDecimalDecorator() {
 				} else {
 					value = parseFloat(String(value).replace(',', '.')).toFixed(2);
 					if (!isDecimal(value)) {
-						throw new BadRequestException(`@IsDecimal(${propertyKey})`);
+						throw new BadRequestException(`@IsDecimal(${String(propertyKey)})`);
 					}
 					return value;
 				}

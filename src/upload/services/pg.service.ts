@@ -11,7 +11,7 @@ export class PgService {
 		this.subscriber = createSubscriber({
 			connectionString: `postgres://${options.username}:${options.password}@${options.host}:${options.port}/${options.database}`,
 		});
-		this.subscriber.events.on('error', (error) => {
+		this.subscriber.events.on('error', () => {
 			process.exit(1);
 		});
 		process.on('exit', () => {
@@ -20,7 +20,7 @@ export class PgService {
 		this.subscriber.connect();
 	}
 
-	public async addEventListener(event: string, listener: (payload) => void) {
+	public async addEventListener(event: string, listener: (payload) => void): Promise<void> {
 		this.subscriber.notifications.on(event, listener);
 		await this.subscriber.listenTo(event);
 	}

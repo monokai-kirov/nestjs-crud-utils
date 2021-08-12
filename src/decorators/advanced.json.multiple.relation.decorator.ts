@@ -1,3 +1,4 @@
+import { applyDecorators } from '@nestjs/common';
 import { addAdvancedMultipleRelationToDtoMetadata } from './advanced.object.multiple.relation.decorator';
 import { OptionalArrayOfJSONsDecorator } from './optional.array.of.jsons.decorator';
 
@@ -11,7 +12,7 @@ export function AdvancedJSONMultipleRelationDecorator({
 	unique?: string[];
 	minCount?: number;
 	maxCount?: number;
-} = {}) {
+} = {}): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		addAdvancedMultipleRelationToDtoMetadata(target.constructor.prototype, {
 			name: propertyKey,

@@ -4,7 +4,7 @@ import { CryptoService } from '../../crypto/services/crypto.service';
 import { UploadValidationService } from './upload.validation.service';
 import { Upload, UploadStatus } from '../models/upload.model';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op } from 'sequelize';
+import { Model, Op } from 'sequelize';
 import { utils } from '../../utils';
 import { config } from '../../config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -68,7 +68,7 @@ export class UploadService {
 		entity?: any | null;
 		minCount?: number;
 		maxCount?: number;
-	}) {
+	}): Promise<void> {
 		await this.uploadValidationService.validateRequest({
 			context: this,
 			propName,
@@ -148,7 +148,12 @@ export class UploadService {
 		entity: any | null;
 		propName: string;
 		remainingFilesIds: string | string[] | null | undefined;
-	}) {
+	}): Promise<{
+		existingFiles: Record<string, any>;
+		isMultiple: boolean;
+		handledRemainingFilesIds: string[];
+		handledWaitingForLinkingIds: string[];
+	}> {
 		let existingFiles = entity ? await entity[`get${utils.ucFirst(propName)}`]() : [];
 		const isMultiple = Array.isArray(existingFiles);
 		existingFiles = existingFiles
@@ -309,8 +314,8 @@ export class UploadService {
 
 	protected async writeBufferToStorage(
 		buffer: Buffer,
-		uploadPath,
-		uploadFolderPath,
+		uploadPath: string,
+		uploadFolderPath: string,
 	): Promise<void> {
 		await mkdirp(uploadFolderPath);
 
@@ -333,11 +338,11 @@ export class UploadService {
 		}
 	}
 
-	public async createRemovingTriggers(crudModel) {
+	public async createRemovingTriggers(crudModel: Model): Promise<void> {
 		uploadTriggerModels.push(crudModel);
 	}
 
-	public async remove(dbRowInsideTrigger) {
+	public async remove(dbRowInsideTrigger: Record<string, any>): Promise<void> {
 		if (dbRowInsideTrigger.url) {
 			const relativeFilePath = dbRowInsideTrigger.url
 				.split(path.sep)
@@ -382,8 +387,8 @@ export class UploadService {
 		});
 	}
 
-	public async createDetachedFiles(files: MulterFile[] = []) {
-		return Promise.all(
+	public async createDetachedFiles(files: MulterFile[] = []): Promise<void> {
+		await Promise.all(
 			files.map(async (newFile) =>
 				this.createOrUpdateHelper({
 					uploadFolder: 'upload/detached',

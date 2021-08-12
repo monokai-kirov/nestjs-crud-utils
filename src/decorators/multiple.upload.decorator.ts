@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsArray, IsOptional, IsUUID } from 'class-validator';
 import { UploadType } from '../upload/services/upload.service';
 import { addUploadToDtoMetadata } from './upload.decorator';
+import { applyDecorators } from '@nestjs/common';
 
 export function MultipleUploadDecorator({
 	type,
@@ -44,7 +45,7 @@ export function MultipleUploadDecorator({
 	handlePicture,
 	minCount,
 	maxCount,
-}) {
+}): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		addUploadToDtoMetadata(target.constructor.prototype, {
 			type,

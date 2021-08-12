@@ -2,10 +2,14 @@ import 'reflect-metadata';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsUUID } from 'class-validator';
 import { UploadType } from '../upload/services/upload.service';
+import { applyDecorators } from '@nestjs/common';
 
 export const UPLOAD_METADATA_KEY = '__uploads__';
 
-export const addUploadToDtoMetadata = (dto, obj) => {
+export const addUploadToDtoMetadata = (
+	dto: Record<string, any>,
+	obj: Record<string, any>,
+): void => {
 	let uploads = Reflect.getMetadata(UPLOAD_METADATA_KEY, dto);
 
 	if (!uploads) {
@@ -51,7 +55,7 @@ export function UploadDecorator({
 	height,
 	handlePicture,
 	required = false,
-}: any): any {
+}: any): ReturnType<typeof applyDecorators> {
 	return function (target, propertyKey, descriptor?) {
 		addUploadToDtoMetadata(target.constructor.prototype, {
 			type,

@@ -11,12 +11,12 @@ export class TransactionInterceptor implements NestInterceptor {
 		private readonly sequelize: Sequelize,
 	) {}
 
-	async intercept(context: ExecutionContext, next: CallHandler) {
+	async intercept(context: ExecutionContext, next: CallHandler): Promise<any> {
 		const result = await this.sequelize.transaction(
 			{
 				isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
 			},
-			async (t) => {
+			async () => {
 				return next.handle().toPromise();
 			},
 		);

@@ -4,7 +4,7 @@ import { utils } from '../utils';
 
 @Catch()
 export class AllWsExceptionsFilter extends BaseWsExceptionFilter {
-	catch(exception: any, host: ArgumentsHost) {
+	catch(exception: any, host: ArgumentsHost): void {
 		let err = exception;
 
 		const ctx = host.switchToWs();

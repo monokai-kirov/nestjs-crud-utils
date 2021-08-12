@@ -37,14 +37,13 @@ WS_ORIGIN=https://your_incredible_site.com:*
 ```ts
 // First line of main.ts
 import 'src/app/config';
-import { config } from '@monokai-kirov/nestjs-crud-utils';
 ```
 
 ## src/app/config.ts
 
 ```ts
-require('dotenv').config();
 import { config } from '@monokai-kirov/nestjs-crud-utils';
+// you can override here config's functions if you want
 ```
 
 ### src/app/app.module.ts
@@ -55,7 +54,7 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 @Module({
 	imports: [
 		SequelizeModule.forRootAsync({
-			useFactory: () => config.getDatabaseOptions() as any, // define defaultScope and underscored: true (you can use your own options but underscored: true is necessary)
+			useFactory: () => config.getDatabaseOptions() as any, // define underscored: true (you can use your own options but underscored: true is necessary)
 		}),
 	],
 })
@@ -275,11 +274,11 @@ import { CategoryController } from './controllers/category.controller';
 export class AdminModule {}
 ```
 
-## Inherited from CrudService and EntityService
+## Constructor options
 
 ```ts
 /**
- * Default options for CrudService
+ * CrudService
  * export type CrudOptions = {
  *	withDtoValidation: true,
  *	withRelationValidation: true,
@@ -287,13 +286,13 @@ export class AdminModule {}
  *	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
  *	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
  *	unscoped: true,
- *	additionalScopes: ['admin'],
+ *	additionalScopes: [],
  *	childModels: [], // for automatically handle inheritance
  * };
  */
 
 /**
- * Default options for EntityService
+ * EntityService
  * {
  *	unscoped: false,
  *	unscopedInclude: false,
@@ -302,37 +301,163 @@ export class AdminModule {}
  */
 ```
 
+## Handling advanced multiple links
+
 ```ts
 /**
- * @Override this if you want@
+ * For example User has Language with Skill
  */
-public getDtoType(dto) {
+// src/user/models/user.model.ts
+@Table
+export class User extends Model {
+	@Column(primaryKeyOptions)
+	id: string;
+
+	@Column({ allowNull: false, defaultValue: false })
+	isActive: boolean;
+
+	@Column({ allowNull: false, defaultValue: UserRole.CUSTOMER })
+	role: string;
+
+	// ...etc
+
+	@HasMany(() => UserLanguageWithSkill)
+	languages: UserLanguageWithSkill[];
+}
+
+// src/user/models/language.with.skill.model.ts
+@Table({
+	indexes: [{ fields: ['user_id'] }, { fields: ['language_id'] }, { fields: ['skill_id'] }],
+})
+export class UserLanguageWithSkill extends Model {
+	@Column(primaryKeyOptions)
+	id: string;
+
+	@ForeignKeyDecorator(() => User)
+	userId: string;
+
+	@BelongsToDecorator(() => User)
+	user: User;
+
+	@ForeignKeyDecorator(() => Language)
+	languageId: string;
+
+	@BelongsToDecorator(() => Language)
+	language: Language;
+
+	@ForeignKeyDecorator(() => LanguageSkill)
+	skillId: string;
+
+	@BelongsToDecorator(() => LanguageSkill)
+	skill: LanguageSkill;
+}
+
+// src/user/dto/user.dto.ts
+export class UserDto {
+	// email, phone, ...etc
+
+	@AdvancedJSONMultipleRelationDecorator({
+		schema: UserLanguageWithSkillDto,
+		unique: ['languageId'], // unique prop so that user can't use one language with different skills
+		minCount: 1, // is optional
+	})
+	languages: string[];
+}
+
+// src/user/dto/user.language.with.skill.dto.ts
+export class UserLanguageWithSkillDto {
+	@UUIDDecorator()
+	languageId: string;
+
+	@UUIDDecorator()
+	skillId: string;
+}
+```
+
+## Handling inheritance
+
+```ts
+public getChildModel(dto: Record<string, any>): Model {
+	return null;
+}
+public getChildModelKey(): string | null {
+	return null;
+}
+// + you must declare childModels in constructor (for example if User has roles, childModels prop is: [Admin, Specialist, ...etc])
+// + declare in getDtoType() correct dtoType for class-validator (for example based on the role in dto)
+```
+
+## @Override this if you want@
+
+```ts
+public getDtoType(dto: Record<string, any>): any {
 	return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
 } // for class-validator
-protected async fillDto(id: string|null, dto): Promise<Object> { return dto; } // if you want to add some new properties before saving
-protected getIncludeOptions(): { all: boolean } | Object[] {
+
+protected async fillDto(
+	id: string | null,
+	dto: Record<string, any>,
+	req: Request,
+): Promise<Record<string, any>> {
+	return dto;
+} // if you want to add some new properties before saving
+
+protected getIncludeOptions(): Include {
 	return { all: true };
 } // is used in all @Finders@ by default (in CrudService { all: true } and in EntityService [])
-protected getSearchingProps(): Array<string|{ property: string, relation?: string, transform?: Function }> {
+
+protected getSearchingProps(): Array<
+	string | string[] | { property: string | string[]; transform: (value: any) => any }
+> {
 	return ['id', 'title'];
 } // for findWithPagination method
+
+public async findAfterCreateOrUpdate(id: string): Promise<T> {
+	return this.findOneById(id);
+}
+
 public getConflictRelations(): string[] {
-	return Object.entries((this.__crudModel__).associations)
-		.filter(([key, value]: any) =>
-			['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType)
-			&& value.target.prototype.constructor !== Upload)
+	return Object.entries(this.__crudModel__.associations)
+		.filter(
+			([key, value]: any) =>
+				['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType) &&
+				value.target.prototype.constructor !== Upload,
+		)
 		.map(([key, value]: any) => key);
-}; // by default all links don't allow to delete the entity, you can override this behaviour
+} // by default all links don't allow to delete the entity, you can override this behaviour
 ```
 
 ```ts
 /**
  * Crud validations (by default all links are validated automatically, override this functions if you intend to validate other cases)
  */
-public async validateRequest(id: string|null, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
-public async validateCreateRequest(dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
-public async validateUpdateRequest(id: string, dto, files, req): Promise<{ dto, files }> { return { dto, files }; }
-public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {}
+public async validateRequest(
+	id: string | null,
+	dto: Record<string, any>,
+	files: Files,
+	req: Request,
+): Promise<{ dto: Record<string, any>; files: Files }> {
+	return { dto, files };
+}
+
+public async validateCreateRequest(
+	dto: Record<string, any>,
+	files: Files,
+	req: Request,
+): Promise<{ dto; files }> {
+	return { dto, files };
+}
+
+public async validateUpdateRequest(
+	id: string,
+	dto: Record<string, any>,
+	files: Files,
+	req: Request,
+): Promise<{ dto: Record<string, any>; files: Files }> {
+	return { dto, files };
+}
+
+public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
 ```
 
 ```ts
@@ -340,7 +465,7 @@ public async validateDeleteRequest(id: string, force?: boolean): Promise<void> {
  * Some helpers
  */
 public readonly correctionService: CorrectionService<T>; // by default used in @Finders@ for preventing some sequelize bugs
-// like include limitations and order with include + helper for recursively add attributes: [] in include for @sql group by query@
+// like include limitations and order with include + helper for recursively add attributes: [] for @sql group by query@
 public readonly validationService: ValidationService<T>; (validateAndParseJsonWithOneKey(), validateAndParseArrayOfJsonsWithOneKey(), validateAndParseArrayOfJsonsWithMultipleKeys() etc.)
 public get crudModel(): Model {
 	return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
@@ -361,7 +486,7 @@ findWithPagination({ search, where, include, offset, limit, order, unscoped, uns
 	where?: Object;
 	include?: Include;
 	offset?: number;
-	limit?: number;
+	limit?: string | number;
 	order?: any[];
 	unscoped?: boolean;
 	unscopedInclude?: boolean;
@@ -419,7 +544,7 @@ count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?:
 /**
  * Validations
  */
-validateDto(dtoType: any, dto: any, whitelist?: boolean): Promise<unknown[]>;
+validateDto(dtoType: any, dto: Record<string, any>, whitelist?: boolean): Promise<Record<string, any>>;
 validateMandatoryId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
 	where?: {};
 	include?: any[];
@@ -477,9 +602,8 @@ getAllAssociations(): any[];
 @OptionalStringDecorator()
 @TextDecorator()
 @OptionalTextDecorator()
-
-@BooleanDecorator()
-@OptionalBooleanDecorator()
+@ArrayOfStringsDecorator()
+@OptionalArrayOfStringsDecorator()
 
 @IntDecorator()
 @OptionalIntDecorator()
@@ -487,6 +611,9 @@ getAllAssociations(): any[];
 @DecimalDecorator()
 @OptionalDecimalDecorator()
 @OptionalDecimalWithoutNullDecorator()
+
+@BooleanDecorator()
+@OptionalBooleanDecorator()
 
 @DateDecorator()
 @OptionalDateDecorator()
@@ -528,7 +655,78 @@ getAllAssociations(): any[];
 @RolesDecorator()
 ```
 
-# Guards
+## Leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks)
+
+```ts
+// package safe-redis-leader is used
+
+/**
+ * Example
+ */
+import { HttpService, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { EntityService, config } from '@monokai-kirov/nestjs-crud-utils';
+import { Options, OptionsType } from '../models/options.model';
+import { Cron, CronExpression } from '@nestjs/schedule';
+
+@Injectable()
+export class OptionsService extends EntityService<Options> {
+	constructor(
+		@InjectModel(Options)
+		private model: typeof Options,
+		private readonly httpService: HttpService,
+	) {
+		super(model);
+	}
+
+	public async onApplicationBootstrap() {
+		await this.updateExchangeRate();
+	}
+
+	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+	public async updateExchangeRate() {
+		const isLeader = await config.isLeader(); // here
+		if (!isLeader) {
+			return;
+		}
+
+		let options = await this.findOne({
+			where: {
+				type: OptionsType.BASE,
+			},
+		});
+
+		try {
+			if (!options) {
+				options = new Options();
+				options.type = OptionsType.BASE;
+			}
+
+			options.values = {};
+			const USD = await this.fetchCurrency('USD');
+			if (USD) {
+				options.values['USD'] = USD;
+			}
+			const EUR = await this.fetchCurrency('EUR');
+			if (EUR) {
+				options.values['EUR'] = EUR;
+			}
+			await options.save();
+		} catch (e) {}
+	}
+
+	private async fetchCurrency(from: string, to = 'RUB', amount = 1) {
+		const host = 'https://api.frankfurter.app';
+		const response = await this.httpService
+			.get(`${host}/latest?from=${from}&to=${to}&amount=${amount}`)
+			.toPromise();
+		const value = response.data?.rates?.[to];
+		return value ?? null;
+	}
+}
+```
+
+## Guards
 
 ```ts
 GatewayThrottlerGuard; // just an example from the docs
@@ -536,7 +734,7 @@ MutexGuard; // TODO: example
 WsMutexGuard; // TODO: example
 ```
 
-# Pipes
+## Pipes
 
 ```ts
 NormalizeBeforeValidationPipe;
@@ -562,12 +760,19 @@ app.useGlobalPipes(
 );
 ```
 
-# Interceptors
+## Interceptors
 
 ```ts
 ReleaseMutexInterceptor // TODO: example
 ReleaseWsMutexInterceptor // TODO: example
 TransactionInterceptor (description below)
+```
+
+## Filters
+
+```ts
+AllExceptionsFilter
+AllWsExceptionsFilter (fixes nestjs + class-validator 500 internal server error bug)
 ```
 
 ## Transactions and websocket gateway example
@@ -602,14 +807,3 @@ import { UseGuards, UsePipes, UseFilters, ValidationPipe } from '@nestjs/common'
 @WebSocketGateway(config.getWsPort(), config.getWsOptions())
 export class EventsGateway {}
 ```
-
-# Filters
-
-```ts
-AllExceptionsFilter
-AllWsExceptionsFilter (fixes nestjs + class-validator 500 internal server error bug)
-```
-
-## CryptoModule, EmailModule, config, utils, sequelize-options etc.
-
-#TODO: examples

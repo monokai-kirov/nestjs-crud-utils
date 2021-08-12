@@ -3,11 +3,11 @@ import { isInt } from 'class-validator';
 
 @Injectable()
 export class ValidatePagePipe implements PipeTransform<any> {
-	async transform(page): Promise<any> {
+	async transform(page?: string | number): Promise<any> {
 		if (page === undefined) {
 			return 1;
 		}
-		const parsedPage = parseInt(page);
+		const parsedPage = typeof page === 'string' ? parseInt(page) : page;
 		if (!isInt(parsedPage)) {
 			throw new BadRequestException('isInt(page)');
 		}

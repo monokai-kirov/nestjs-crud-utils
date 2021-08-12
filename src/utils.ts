@@ -35,7 +35,7 @@ class Utils {
 		return result;
 	}
 
-	private normalizeHelper(obj, callback: Function) {
+	private normalizeHelper(obj, callback: (key: string, value: any) => any) {
 		if (obj === null || (!Array.isArray(obj) && typeof obj !== 'object') || obj instanceof Buffer)
 			return obj;
 

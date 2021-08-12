@@ -1,7 +1,7 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export function UnnecessaryDecorator() {
+export function UnnecessaryDecorator(): ReturnType<typeof applyDecorators> {
 	return applyDecorators(
 		ApiProperty({
 			description:
