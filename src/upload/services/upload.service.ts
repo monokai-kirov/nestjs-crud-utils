@@ -4,7 +4,7 @@ import { CryptoService } from '../../crypto/services/crypto.service';
 import { UploadValidationService } from './upload.validation.service';
 import { Upload, UploadStatus } from '../models/upload.model';
 import { InjectModel } from '@nestjs/sequelize';
-import { Model, Op } from 'sequelize';
+import { Op } from 'sequelize';
 import { utils } from '../../utils';
 import { config } from '../../config';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -338,7 +338,7 @@ export class UploadService {
 		}
 	}
 
-	public async createRemovingTriggers(crudModel: Model): Promise<void> {
+	public async createRemovingTriggers(crudModel): Promise<void> {
 		uploadTriggerModels.push(crudModel);
 	}
 

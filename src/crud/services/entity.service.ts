@@ -420,7 +420,7 @@ export class EntityService<T> {
 	/**
 	 * Relations
 	 */
-	public getSingleRelations(model?: Model): Array<{ name: string; model: Model }> {
+	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>
@@ -434,7 +434,7 @@ export class EntityService<T> {
 			});
 	}
 
-	public getMultipleRelations(model?: Model): Array<{ name: string; model: Model }> {
+	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>
@@ -449,7 +449,7 @@ export class EntityService<T> {
 			});
 	}
 
-	public getUploadRelations(model?: Model): string[] {
+	public getUploadRelations(model?): string[] {
 		return Object.entries((model ? model : this.__crudModel__).associations)
 			.filter(
 				([key, value]: any) =>

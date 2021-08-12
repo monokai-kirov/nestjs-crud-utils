@@ -4,7 +4,7 @@ import { InjectConnection } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { PgService } from './pg.service';
 import { config } from '../../config';
-import { Model, QueryTypes } from 'sequelize';
+import { QueryTypes } from 'sequelize';
 import { UploadService, uploadTriggerModels } from './upload.service';
 
 @Injectable()
@@ -91,7 +91,7 @@ export class UploadTriggerService {
 		});
 	}
 
-	public async createRemovingTriggers(crudModel: Model): Promise<void> {
+	public async createRemovingTriggers(crudModel): Promise<void> {
 		await this.createRemovingTriggersForHasOneRelations(crudModel);
 		await this.createRemovingTriggersForManyToManyTables(crudModel);
 	}
