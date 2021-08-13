@@ -25,10 +25,6 @@ export class EntityService<T> {
 	public readonly __crudModel__;
 
 	constructor(crudModel: Record<string, any>, options: EntityOptions = {}) {
-		this.correctionService = correctionService;
-		this.validationService = validationService as ValidationService<T>;
-		this.__crudModel__ = crudModel;
-
 		const entityOptions = { ...EntityService.DEFAULT_ENTITY_OPTIONS, ...options };
 		for (const prop in entityOptions) {
 			if (Object.hasOwnProperty.call(entityOptions, prop)) {
@@ -36,27 +32,11 @@ export class EntityService<T> {
 			}
 		}
 
-		this.checkIncludeOptions();
-	}
+		this.correctionService = correctionService;
+		this.validationService = validationService as ValidationService<T>;
+		this.__crudModel__ = crudModel;
 
-	public get crudModel(): Model {
-		return this.correctionService.unscopedHelper(
-			this,
-			this.entityOptions.unscoped,
-			this.entityOptions.additionalScopes,
-		);
-	}
-	public get entityName(): string {
-		return this.__crudModel__.prototype.constructor.name;
-	}
-	public get tableName(): string {
-		return this.__crudModel__.getTableName();
-	}
-	public getEntityNameByModel(model?): string {
-		return model ? model.prototype.constructor.name : this.entityName;
-	}
-	public getMaxEntitiesPerPage(): number {
-		return 30;
+		this.checkIncludeOptions();
 	}
 
 	protected getIncludeOptions(): Include {
@@ -67,6 +47,170 @@ export class EntityService<T> {
 		string | string[] | { property: string | string[]; transform: (value: any) => any }
 	> {
 		return ['id', 'title'];
+	}
+
+	public get crudModel(): Model {
+		return this.correctionService.unscopedHelper(
+			this,
+			this.entityOptions.unscoped,
+			this.entityOptions.additionalScopes,
+		);
+	}
+
+	public get tableName(): string {
+		return this.__crudModel__.getTableName();
+	}
+
+	public get entityName(): string {
+		return this.__crudModel__.prototype.constructor.name;
+	}
+
+	public getEntityNameByModel(model?): string {
+		return model ? model.prototype.constructor.name : this.entityName;
+	}
+
+	public getMaxEntitiesPerPage(): number {
+		return 30;
+	}
+
+	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload,
+			)
+			.map(([key, value]: any) => {
+				return {
+					name: key,
+					model: value.target,
+				};
+			});
+	}
+
+	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					['BelongsToMany', 'HasMany'].includes(value.associationType) &&
+					value.target.prototype.constructor !== Upload,
+			)
+			.map(([key, value]: any) => {
+				return {
+					name: key,
+					model: value.target,
+				};
+			});
+	}
+
+	public getUploadRelations(model?): string[] {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					['BelongsTo', 'BelongsToMany'].includes(value.associationType) &&
+					value.target.prototype.constructor === Upload,
+			)
+			.map(([key, value]: any) => key);
+	}
+
+	public getAllAssociations(): any {
+		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
+			return value.target.prototype.constructor;
+		});
+	}
+
+	/**
+	 * Validations
+	 */
+	public async validateDto(
+		dtoType: any,
+		dto: Record<string, any>,
+		whitelist = true,
+	): Promise<Record<string, any>> {
+		return this.validationService.validateDto(dtoType, dto, whitelist);
+	}
+
+	public async validateMandatoryId(
+		id: string,
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<T> {
+		return this.validationService.validateMandatoryId(this, id, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
+	}
+
+	public async validateOptionalId(
+		id: string,
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<T | void> {
+		return this.validationService.validateOptionalId(this, id, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
+	}
+
+	public async validateMandatoryIds(
+		ids: string[],
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<void> {
+		await this.validationService.validateMandatoryIds(this, ids, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
+	}
+
+	public async validateOptionalIds(
+		ids: string[],
+		{
+			where = {},
+			include = [],
+			model = null,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+		} = {},
+	): Promise<void> {
+		await this.validationService.validateOptionalIds(this, ids, {
+			where,
+			include,
+			model,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+		});
 	}
 
 	/**
@@ -323,149 +467,9 @@ export class EntityService<T> {
 	}
 
 	/**
-	 * Validations
+	 * Checking
 	 */
-	public async validateDto(
-		dtoType: any,
-		dto: Record<string, any>,
-		whitelist = true,
-	): Promise<Record<string, any>> {
-		return this.validationService.validateDto(dtoType, dto, whitelist);
-	}
-
-	public async validateMandatoryId(
-		id: string,
-		{
-			where = {},
-			include = [],
-			model = null,
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-		} = {},
-	): Promise<T> {
-		return this.validationService.validateMandatoryId(this, id, {
-			where,
-			include,
-			model,
-			unscoped,
-			unscopedInclude,
-			additionalScopes,
-		});
-	}
-
-	public async validateOptionalId(
-		id: string,
-		{
-			where = {},
-			include = [],
-			model = null,
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-		} = {},
-	): Promise<T | void> {
-		return this.validationService.validateOptionalId(this, id, {
-			where,
-			include,
-			model,
-			unscoped,
-			unscopedInclude,
-			additionalScopes,
-		});
-	}
-
-	public async validateMandatoryIds(
-		ids: string[],
-		{
-			where = {},
-			include = [],
-			model = null,
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-		} = {},
-	): Promise<void> {
-		await this.validationService.validateMandatoryIds(this, ids, {
-			where,
-			include,
-			model,
-			unscoped,
-			unscopedInclude,
-			additionalScopes,
-		});
-	}
-
-	public async validateOptionalIds(
-		ids: string[],
-		{
-			where = {},
-			include = [],
-			model = null,
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-		} = {},
-	): Promise<void> {
-		await this.validationService.validateOptionalIds(this, ids, {
-			where,
-			include,
-			model,
-			unscoped,
-			unscopedInclude,
-			additionalScopes,
-		});
-	}
-
-	/**
-	 * Relations
-	 */
-	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload,
-			)
-			.map(([key, value]: any) => {
-				return {
-					name: key,
-					model: value.target,
-				};
-			});
-	}
-
-	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					['BelongsToMany', 'HasMany'].includes(value.associationType) &&
-					value.target.prototype.constructor !== Upload,
-			)
-			.map(([key, value]: any) => {
-				return {
-					name: key,
-					model: value.target,
-				};
-			});
-	}
-
-	public getUploadRelations(model?): string[] {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					['BelongsTo', 'BelongsToMany'].includes(value.associationType) &&
-					value.target.prototype.constructor === Upload,
-			)
-			.map(([key, value]: any) => key);
-	}
-
-	public getAllAssociations(): any {
-		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
-			return value.target.prototype.constructor;
-		});
-	}
-
-	public checkIncludeOptions(): void {
+	protected checkIncludeOptions(): void {
 		const include = <any>this.getIncludeOptions();
 		if (isEmpty(include.all)) {
 			include.forEach((child) =>

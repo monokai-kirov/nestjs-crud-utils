@@ -29,7 +29,7 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 
 WS_PORT=3030
-WS_ORIGIN=https://your_incredible_site.com:*
+WS_ORIGIN=https://your_site.com:*
 ```
 
 ## main.ts
@@ -287,7 +287,7 @@ export class AdminModule {}
  *	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
  *	unscoped: true,
  *	additionalScopes: [],
- *	childModels: [], // for automatically handle inheritance
+ *	childModels: [], // for automatically handling inheritance
  * };
  */
 
@@ -396,14 +396,6 @@ public getDtoType(dto: Record<string, any>): any {
 	return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
 } // for class-validator
 
-protected async fillDto(
-	id: string | null,
-	dto: Record<string, any>,
-	req: Request,
-): Promise<Record<string, any>> {
-	return dto;
-} // if you want to add some new properties before saving
-
 protected getIncludeOptions(): Include {
 	return { all: true };
 } // is used in all @Finders@ by default (in CrudService { all: true } and in EntityService [])
@@ -414,10 +406,6 @@ protected getSearchingProps(): Array<
 	return ['id', 'title'];
 } // for findWithPagination method
 
-public async findAfterCreateOrUpdate(id: string): Promise<T> {
-	return this.findOneById(id);
-}
-
 public getConflictRelations(): string[] {
 	return Object.entries(this.__crudModel__.associations)
 		.filter(
@@ -427,13 +415,55 @@ public getConflictRelations(): string[] {
 		)
 		.map(([key, value]: any) => key);
 } // by default all links don't allow to delete the entity, you can override this behaviour
+
+protected async fillDto(
+	id: string | null,
+	dto: Record<string, any>,
+	req: Request,
+): Promise<Record<string, any>> {
+	return dto;
+} // if you want to add some new properties before saving
+
+public async findAfterCreateOrUpdate(id: string): Promise<T> {
+	return this.findOneById(id);
+}
 ```
+
+```ts
+/**
+ * Some helpers
+ */
+public readonly correctionService: CorrectionService<T>; // by default used in @Finders@ for preventing some sequelize bugs
+// like include limitations and order with include + helper for recursively add attributes: [] for @sql group by query@
+public readonly validationService: ValidationService<T>; (validateAndParseJsonWithOneKey(), validateAndParseArrayOfJsonsWithOneKey(), validateAndParseArrayOfJsonsWithMultipleKeys() etc.)
+
+public get crudModel(): Model {
+	return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
+}
+public get tableName() : string { return this.__crudModel__.getTableName() };
+public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
+public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
+public getMaxEntitiesPerPage() : number { return 30; }
+
+getSingleRelations(model?: any): Array<{
+	name: string;
+	model: Model;
+}>;
+getMultipleRelations(model?: any): Array<{
+	name: string;
+	model: Model;
+}>;
+getUploadRelations(model?: any): string[];
+getAllAssociations(): any[];
+```
+
+## Validations
 
 ```ts
 /**
  * Crud validations (by default all links are validated automatically, override this functions if you intend to validate other cases)
  */
-public async validateRequest(
+public async validateRequest( // is used in create and update methods
 	id: string | null,
 	dto: Record<string, any>,
 	files: Files,
@@ -460,93 +490,12 @@ public async validateUpdateRequest(
 }
 
 public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
-```
 
-```ts
 /**
- * Some helpers
- */
-public readonly correctionService: CorrectionService<T>; // by default used in @Finders@ for preventing some sequelize bugs
-// like include limitations and order with include + helper for recursively add attributes: [] for @sql group by query@
-public readonly validationService: ValidationService<T>; (validateAndParseJsonWithOneKey(), validateAndParseArrayOfJsonsWithOneKey(), validateAndParseArrayOfJsonsWithMultipleKeys() etc.)
-public get crudModel(): Model {
-	return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
-}
-public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
-public get tableName() : string { return this.__crudModel__.getTableName() };
-public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
-public getMaxEntitiesPerPage() : number { return 30; }
-```
-
-```ts
-/**
- * @Finders@
- */
-// by default with optimizedInclude in count method
-findWithPagination({ search, where, include, offset, limit, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	search?: string;
-	where?: Object;
-	include?: Include;
-	offset?: number;
-	limit?: string | number;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<{
-	entities: T[];
-	totalCount: number;
-}>;
-findOne({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Object;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T | null>;
-findOneById(id: string, { where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Object;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T | null>;
-findAll({ where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Object;
-	include?: Include;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T[]>;
-findAllByIds(ids: string[], { where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Object;
-	include?: Include;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T[]>;
-count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: { // by default with optimizedInclude
-	where?: Object;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<number>;
-```
-
-```ts
-/**
- * Validations
+ * Other validations (inherited from EntityService)
  */
 validateDto(dtoType: any, dto: Record<string, any>, whitelist?: boolean): Promise<Record<string, any>>;
+
 validateMandatoryId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
 	where?: {};
 	include?: any[];
@@ -555,6 +504,7 @@ validateMandatoryId(id: string, { where, include, model, unscoped, unscopedInclu
 	unscopedInclude?: boolean;
 	additionalScopes?: string[];
 }): Promise<T>;
+
 validateOptionalId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
 	where?: {};
 	include?: any[];
@@ -563,6 +513,7 @@ validateOptionalId(id: string, { where, include, model, unscoped, unscopedInclud
 	unscopedInclude?: boolean;
 	additionalScopes?: string[];
 }): Promise<T | void>;
+
 validateMandatoryIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
 	where?: {};
 	include?: any[];
@@ -571,6 +522,7 @@ validateMandatoryIds(ids: string[], { where, include, model, unscoped, unscopedI
 	unscopedInclude?: boolean;
 	additionalScopes?: string[];
 }): Promise<void>;
+
 validateOptionalIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
 	where?: {};
 	include?: any[];
@@ -581,20 +533,73 @@ validateOptionalIds(ids: string[], { where, include, model, unscoped, unscopedIn
 }): Promise<void>;
 ```
 
+## Finders
+
 ```ts
-/**
- * Relations
- */
-getSingleRelations(model?: any): Array<{
-	name: string;
-	model: Model;
+// by default with optimizedInclude in count method
+findWithPagination({ search, where, include, offset, limit, page, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	search?: string;
+	where?: Record<string, any>;
+	include?: Include;
+	offset?: number;
+	limit?: string | number;
+	page?: number;
+	order?: any[];
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<{
+		entities: T[];
+		totalCount: number;
 }>;
-getMultipleRelations(model?: any): Array<{
-	name: string;
-	model: Model;
-}>;
-getUploadRelations(model?: any): string[];
-getAllAssociations(): any[];
+
+findOne({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	where?: Record<string, any>;
+	include?: Include;
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<T | null>;
+
+findOneById(id: string, { where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	where?: Record<string, any>;
+	include?: Include;
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<T | null>;
+
+findAll({ where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	where?: Record<string, any>;
+	include?: Include;
+	order?: any[];
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<T[]>;
+
+findAllByIds(ids: string[], { where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	where?: Record<string, any>;
+	include?: Include;
+	order?: any[];
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<T[]>;
+
+count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
+	where?: Record<string, any>;
+	include?: Include;
+	unscoped?: boolean;
+	unscopedInclude?: boolean;
+	additionalScopes?: string[];
+	[key: string]: any;
+}): Promise<number>;
 ```
 
 # Decorators list
