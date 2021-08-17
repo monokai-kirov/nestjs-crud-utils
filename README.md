@@ -46,35 +46,24 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 // you can override here config's functions if you want
 ```
 
-### src/app/app.module.ts
-
-```ts
-import { config } from '@monokai-kirov/nestjs-crud-utils';
-
-@Module({
-	imports: [
-		SequelizeModule.forRootAsync({
-			useFactory: () => config.getDatabaseOptions() as any, // define underscored: true (you can use your own options but underscored: true is necessary)
-		}),
-	],
-})
-export class AppModule {}
-```
-
 # Crud example (please import UploadModule for this example)
-
-## UploadModule
-
-By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
 
 ## src/app/app.module.ts
 
 ```ts
+import { config, Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { Upload, UploadModule } from '@monokai-kirov/nestjs-crud-utils';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
-	imports: [UploadModule.register([SequelizeModule.forFeature([Upload])])],
+	imports: [
+		SequelizeModule.forRootAsync({
+			useFactory: () => config.getDatabaseOptions() as any, // Define underscored: true (you can use your own options but underscored: true is necessary)
+		}),
+		UploadModule.register([SequelizeModule.forFeature([Upload])]), // By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+		AdminModule,
+	],
 })
 export class AppModule {}
 ```
@@ -211,11 +200,11 @@ export class CategoryDto {
 ## src/admin/services/category.service.ts
 
 ```ts
-import { CrudService, Upload, UploadService } from "@monokai-kirov/nestjs-crud-utils";
-import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/sequelize";
-import { CategoryDto } from "../dto/category.dto";
-import { Category } from "../models/category.model";
+import { CrudService, Upload, UploadService } from '@monokai-kirov/nestjs-crud-utils';
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { CategoryDto } from '../dto/category.dto';
+import { Category } from '../models/category.model';
 
 @Injectable()
 export class CategoryService extends CrudService<Category> {
@@ -226,6 +215,7 @@ export class CategoryService extends CrudService<Category> {
 	) {
 		super(model, CategoryDto, uploadService);
 	}
+}
 ```
 
 ## src/admin/controllers/category.controller.ts
@@ -279,7 +269,7 @@ export class AdminModule {}
 ```ts
 /**
  * CrudService
- * export type CrudOptions = {
+ * public static DEFAULT_CRUD_OPTIONS: CrudOptions = {
  *	withDtoValidation: true,
  *	withRelationValidation: true,
  *	withUploadValidation: true,
@@ -293,7 +283,7 @@ export class AdminModule {}
 
 /**
  * EntityService
- * {
+ * public static DEFAULT_ENTITY_OPTIONS: EntityOptions = {
  *	unscoped: false,
  *	unscopedInclude: false,
  *	additionalScopes: [],
