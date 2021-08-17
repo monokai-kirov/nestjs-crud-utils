@@ -91,7 +91,7 @@ export class UploadTriggerService {
 		});
 	}
 
-	public async createRemovingTriggers(crudModel): Promise<void> {
+	private async createRemovingTriggers(crudModel): Promise<void> {
 		await this.createRemovingTriggersForHasOneRelations(crudModel);
 		await this.createRemovingTriggersForManyToManyTables(crudModel);
 	}

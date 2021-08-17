@@ -12,7 +12,7 @@ export class UploadModule {
 			module: UploadModule,
 			imports,
 			providers: [UploadService, UploadValidationService, PgService, UploadTriggerService],
-			exports: [UploadService, UploadValidationService, PgService, UploadTriggerService],
+			exports: [UploadService, UploadValidationService],
 		};
 	}
 }
