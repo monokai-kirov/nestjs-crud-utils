@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { MulterFile } from '../types/multer.file.type';
-import { CryptoService } from '../../crypto/services/crypto.service';
 import { UploadValidationService } from './upload.validation.service';
 import { Upload, UploadStatus } from '../models/upload.model';
 import { InjectModel } from '@nestjs/sequelize';
 import { Op } from 'sequelize';
 import { utils } from '../../utils';
 import { config } from '../../config';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const crypto = require('crypto');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -48,7 +49,6 @@ export class UploadService {
 	constructor(
 		@InjectModel(Upload)
 		private uploadModel: typeof Upload,
-		private readonly cryptoService: CryptoService,
 		private readonly uploadValidationService: UploadValidationService,
 	) {}
 
@@ -213,7 +213,7 @@ export class UploadService {
 		handlePicture?: (sharp) => any;
 		status?;
 	}): Promise<Upload> {
-		const hash = this.cryptoService.generateHash();
+		const hash = crypto.randomBytes(length).toString('hex');
 		const relativeFilePath = path.normalize(
 			`${uploadFolder}/${hash}${path.extname(file.originalname)}`,
 		);
