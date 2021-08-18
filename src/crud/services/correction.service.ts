@@ -5,6 +5,9 @@ import { Op } from 'sequelize';
 import { defaultScopeOptions } from '../../sequelize.options';
 
 export class CorrectionService<T> {
+	/**
+	 * @see https://github.com/sequelize/sequelize/issues/7344
+	 */
 	public getCorrectInclude(
 		context: EntityService<T>,
 		unscopedInclude: boolean,
@@ -56,30 +59,6 @@ export class CorrectionService<T> {
 			);
 		}
 		return result;
-	}
-
-	/**
-	 * Fix sequeilize outer where clause
-	 */
-	public addCorrectRequiredAttributes(
-		context: EntityService<T>,
-		include: Include,
-		outerWhere: string[],
-		optimizeInclude = false,
-	): Include {
-		const parent = context.__crudModel__.prototype.constructor;
-		return include['all'] === true
-			? context
-					.getAllAssociations()
-					.map((child) =>
-						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
-					)
-					.filter((v) => v)
-			: (include as any[])
-					.map((child) =>
-						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
-					)
-					.filter((v) => v);
 	}
 
 	/**
@@ -159,6 +138,27 @@ export class CorrectionService<T> {
 		});
 
 		return [...result];
+	}
+
+	public addCorrectRequiredAttributes(
+		context: EntityService<T>,
+		include: Include,
+		outerWhere: string[],
+		optimizeInclude = false,
+	): Include {
+		const parent = context.__crudModel__.prototype.constructor;
+		return include['all'] === true
+			? context
+					.getAllAssociations()
+					.map((child) =>
+						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
+					)
+					.filter((v) => v)
+			: (include as any[])
+					.map((child) =>
+						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
+					)
+					.filter((v) => v);
 	}
 
 	protected addCorrectRequiredAttributesHelper(
