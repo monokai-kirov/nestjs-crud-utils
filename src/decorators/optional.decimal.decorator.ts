@@ -10,8 +10,10 @@ export function OptionalDecimalDecorator(): ReturnType<typeof applyDecorators> {
 			ApiProperty({ description: '@IsOptional(), @IsDecimal()' }),
 			Allow(),
 			Transform(({ value }) => {
-				if (value === undefined || value === null) {
+				if (value === undefined) {
 					return value;
+				} else if (value === null) {
+					throw new BadRequestException(`${String(propertyKey)} !== null`);
 				} else {
 					value = parseFloat(String(value).replace(',', '.')).toFixed(2);
 					if (!isDecimal(value)) {
