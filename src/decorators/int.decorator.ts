@@ -9,8 +9,10 @@ export function IntDecorator(): ReturnType<typeof applyDecorators> {
 			ApiProperty({ description: '@IsInt()' }),
 			IsNotEmpty(),
 			Transform(({ value }) => {
-				if (value === undefined || value === null) {
+				if (value === undefined) {
 					return value;
+				} else if (value === null) {
+					throw new BadRequestException(`${String(propertyKey)} !== null`);
 				} else {
 					value = parseInt(value);
 					if (!isInt(value)) {

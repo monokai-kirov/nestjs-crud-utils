@@ -791,7 +791,7 @@ app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 ```
 
 ```ts
-// Websocket gateway example (fix ws errors and catch postgresql 40001 throwed by SERIALIZABLE isolation level if TransactionInterceptor is used)
+// Websocket gateway example (fix ws errors and catch postgresql 40001 thrown by SERIALIZABLE isolation level if TransactionInterceptor is used)
 import {
 	GatewayThrottlerGuard,
 	AllWsExceptionsFilter
