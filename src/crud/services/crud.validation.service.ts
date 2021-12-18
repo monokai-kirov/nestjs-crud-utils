@@ -1,70 +1,36 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
-import { plainToClass } from 'class-transformer';
 import { isEmpty } from 'class-validator';
-import { Upload } from '../../upload/models/upload.model';
-import { utils } from '../../utils';
-import { CrudService, Files } from './crud.service';
 import { Request } from 'express';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Files, ValidateResult } from '../types';
+import { utils } from '../../utils/utils';
+import { CrudService } from './crud.service';
+import { Upload } from '../../upload/models/upload.model';
+import { BulkCreateUpdateDto } from '../dto/bulk.create.update.dto';
 
 export class CrudValidationService<T> {
-	/**
-	 * For controller
-	 */
 	public async validateBeforeCreating(
 		context: CrudService<T>,
 		dto: Record<string, any>,
 		files: Files,
 		req: Request,
-	): Promise<{ dto: any; files: any; [key: string]: any }> {
-		if (context.crudOptions.withDtoValidation) {
-			dto = await context.validateDto(context.getDtoType(dto), dto);
-		}
-
-		await this.validateSameCodeIfNecessary(context, null, dto);
-
-		if (context.crudOptions.withRelationValidation) {
-			await this.validateRelations(context, dto);
-		}
-		dto = await this.validateAdvancedMultipleRelations(context, null, dto);
-
-		const normalizedFiles = context.normalizeFiles(files);
-		if (context.crudOptions.withUploadValidation) {
-			await this.validateUploadCreateRequest(context, dto, normalizedFiles);
-		}
-
-		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
-			null,
-			dto,
-			normalizedFiles,
-			req,
-		);
-		const result = await context.validateCreateRequest(transformedDto, transformedFiles, req);
-		return {
-			dto: context.getDtoType(dto) ? plainToClass(context.getDtoType(dto), result.dto) : result.dto,
-			...result,
-		};
+	): Promise<ValidateResult> {
+		return this.validateHelper(context, null, dto, files, req);
 	}
 
 	public async validateBeforeBulkCreating(
 		context: CrudService<T>,
 		dto: Record<string, any>,
+		files: Files,
 		req: Request,
-	): Promise<void> {
+	): Promise<ValidateResult[]> {
+		dto = await context.validateDto(BulkCreateUpdateDto, dto);
+		const chunks = [];
+
 		for (let chunk of dto.bulk) {
-			if (context.crudOptions.withDtoValidation) {
-				chunk = await context.validateDto(context.getDtoType(dto), chunk);
-			}
-
-			await this.validateSameCodeIfNecessary(context, null, chunk);
-
-			if (context.crudOptions.withRelationValidation) {
-				await this.validateRelations(context, chunk);
-			}
-			chunk = await this.validateAdvancedMultipleRelations(context, null, chunk);
-
-			await context.validateRequest(null, chunk, {}, req);
-			await context.validateCreateRequest(chunk, {}, req);
+			chunk = await this.validateHelper(context, null, chunk, files, req);
+			chunks.push(chunk);
 		}
+		return chunks;
 	}
 
 	public async validateBeforeUpdating(
@@ -73,36 +39,9 @@ export class CrudValidationService<T> {
 		dto: Record<string, any>,
 		files: Files,
 		req: Request,
-	): Promise<{ dto: any; files: any; [key: string]: any }> {
+	): Promise<ValidateResult> {
 		await context.validateMandatoryId(id);
-
-		if (context.crudOptions.withDtoValidation) {
-			dto = await context.validateDto(context.getDtoType(dto), dto);
-		}
-
-		await this.validateSameCodeIfNecessary(context, id, dto);
-
-		if (context.crudOptions.withRelationValidation) {
-			await this.validateRelations(context, dto);
-		}
-		dto = await this.validateAdvancedMultipleRelations(context, id, dto);
-
-		const normalizedFiles = context.normalizeFiles(files);
-		if (context.crudOptions.withUploadValidation) {
-			await this.validateUploadUpdateRequest(context, id, dto, normalizedFiles);
-		}
-
-		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
-			id,
-			dto,
-			normalizedFiles,
-			req,
-		);
-		const result = await context.validateUpdateRequest(id, transformedDto, transformedFiles, req);
-		return {
-			dto: context.getDtoType(dto) ? plainToClass(context.getDtoType(dto), result.dto) : result.dto,
-			...result,
-		};
+		return this.validateHelper(context, id, dto, files, req);
 	}
 
 	public async validateBeforeRemoving(
@@ -118,37 +57,12 @@ export class CrudValidationService<T> {
 		await context.validateDeleteRequest(id, force, req);
 	}
 
-	/**
-	 * Relations
-	 */
 	public async validateRelations(context: CrudService<T>, dto: Record<string, any>): Promise<void> {
 		await this.validateRelationsHelper(context, dto);
 
 		const childModel = context.getChildModel(dto);
 		if (childModel) {
 			await this.validateRelationsHelper(context, dto, childModel);
-		}
-	}
-
-	protected async validateRelationsHelper(
-		context: CrudService<T>,
-		dto: Record<string, any>,
-		model?,
-	): Promise<void> {
-		for (const singleRelation of context.getSingleRelations(model)) {
-			await context.validateOptionalId(dto[singleRelation.name], {
-				model: singleRelation.model,
-			});
-		}
-
-		const advancedMultipleRelations = context.getAdvancedMultipleRelations(dto).map((v) => v.name);
-
-		for (const multipleRelation of context.getMultipleRelations(model)) {
-			if (!advancedMultipleRelations.includes(multipleRelation.name)) {
-				await context.validateOptionalIds(dto[multipleRelation.name], {
-					model: multipleRelation.model,
-				});
-			}
 		}
 	}
 
@@ -225,6 +139,174 @@ export class CrudValidationService<T> {
 		return dto;
 	}
 
+	public async validateUploadCreateRequest(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+	): Promise<void> {
+		await this.validateUploadRequest(context, null, dto, files);
+	}
+
+	public async validateUploadUpdateRequest(
+		context: CrudService<T>,
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+	): Promise<void> {
+		await this.validateUploadRequest(context, id, dto, files);
+	}
+
+	protected async validateHelper(
+		context: CrudService<T>,
+		id: string | null,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		if (context.crudOptions.withDtoValidation) {
+			dto = await context.validateDto(context.getDtoType(dto), dto);
+		}
+
+		await this.validateSameCodeIfNecessary(context, id, dto);
+
+		if (context.crudOptions.withRelationValidation) {
+			await this.validateRelations(context, dto);
+		}
+		dto = await this.validateAdvancedMultipleRelations(context, id, dto);
+
+		const normalizedFiles = utils.normalizeFiles(files);
+		if (context.crudOptions.withUploadValidation) {
+			if (!id) {
+				await this.validateUploadCreateRequest(context, dto, normalizedFiles);
+			} else {
+				await this.validateUploadUpdateRequest(context, id, dto, normalizedFiles);
+			}
+		}
+
+		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
+			id,
+			dto,
+			normalizedFiles,
+			req,
+		);
+
+		let result;
+		if (!id) {
+			result = await context.validateCreateRequest(transformedDto, transformedFiles, req);
+		} else {
+			result = await context.validateUpdateRequest(id, transformedDto, transformedFiles, req);
+		}
+
+		return {
+			dto: context.transformDto(result.dto),
+			...result,
+		};
+	}
+
+	protected async validateSameCodeIfNecessary(
+		context: CrudService<T>,
+		id: string | null,
+		dto: Record<string, any>,
+	): Promise<void> {
+		if (!isEmpty(dto.code)) {
+			const entityWithSameCode = await context.findOne({ where: { code: dto.code } });
+			if (entityWithSameCode && entityWithSameCode['id'] !== id) {
+				throw new ConflictException(`Entity with same code '${dto.code}' already exists`);
+			}
+		}
+	}
+
+	protected async validateRelationsHelper(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		model?,
+	): Promise<void> {
+		for (const singleRelation of context.getSingleRelations(model)) {
+			await context.validateOptionalId(dto[singleRelation.name], {
+				model: singleRelation.model,
+			});
+		}
+
+		const advancedMultipleRelations = context.getAdvancedMultipleRelations(dto).map((v) => v.name);
+
+		for (const multipleRelation of context.getMultipleRelations(model)) {
+			if (!advancedMultipleRelations.includes(multipleRelation.name)) {
+				await context.validateOptionalIds(dto[multipleRelation.name], {
+					model: multipleRelation.model,
+				});
+			}
+		}
+	}
+
+	protected async validateUploadRequest(
+		context: CrudService<T>,
+		id: string | null,
+		dto: Record<string, any>,
+		files: Files,
+	): Promise<void> {
+		const parentUploads = context
+			.getUploads(dto)
+			.filter((v) => context.getUploadRelations().includes(v.name));
+
+		let entity;
+		if (id) {
+			entity = await context.findOneById(id);
+		}
+
+		await this.validateUploadRequestHelper({
+			context,
+			uploads: parentUploads,
+			files,
+			dto,
+			...(entity ? { entity } : {}),
+		});
+
+		const childModel = context.getChildModel(dto);
+		if (childModel) {
+			const childUploads = context
+				.getUploads(dto)
+				.filter((v) => context.getUploadRelations(childModel).includes(v.name));
+
+			const childEntity = await (childModel as any).findOne({
+				where: { [context.getChildModelKey()]: id },
+			});
+
+			await this.validateUploadRequestHelper({
+				context,
+				uploads: childUploads,
+				files,
+				dto,
+				...(childEntity ? { entity: childEntity } : {}),
+			});
+		}
+	}
+
+	protected async validateUploadRequestHelper({
+		context,
+		uploads,
+		files,
+		dto,
+		entity,
+	}: {
+		context: CrudService<T>;
+		uploads;
+		files: Files;
+		dto: Record<string, any>;
+		entity?: Record<string, any>;
+	}): Promise<void> {
+		for (const upload of uploads) {
+			await context.upload.validateRequest({
+				propName: upload.name,
+				type: upload.type,
+				files,
+				dto,
+				...(entity ? { entity } : {}),
+				minCount: upload.minCount,
+				maxCount: upload.maxCount,
+			});
+		}
+	}
+
 	protected async validateConflictRelations(context: CrudService<T>, id: string): Promise<void> {
 		const associations = Object.entries(context.__crudModel__.associations)
 			.filter(
@@ -237,7 +319,7 @@ export class CrudValidationService<T> {
 					key,
 					model: value.target,
 					associationType: value.associationType,
-					foreignKey: value.foreignKey,
+					foreignKey: utils.snakeCaseToCamel(value.foreignKey),
 				};
 			});
 
@@ -246,6 +328,16 @@ export class CrudValidationService<T> {
 			if (!hit) {
 				continue;
 			}
+
+			const throwError = (entities) => {
+				throw new ConflictException(
+					`Can't remove ${
+						context.entityName
+					}. There are some links existing (${relationName}): ${entities
+						.map((v) => v.id)
+						.join(', ')}`,
+				);
+			};
 
 			if (hit.associationType === 'BelongsToMany') {
 				const entities = await hit.model.unscoped().findAll({
@@ -260,111 +352,19 @@ export class CrudValidationService<T> {
 				});
 
 				if (entities?.length) {
-					throw new ConflictException(
-						`Can't remove ${
-							context.entityName
-						}. There are some links existing ${relationName}: ${entities
-							.map((v) => v.id)
-							.join(', ')}`,
-					);
+					throwError(entities);
 				}
 			} else {
 				const entities = await hit.model.unscoped().findAll({
 					attributes: ['id'],
 					where: {
-						[utils.snakeCaseToCamel(hit.foreignKey)]: id,
+						[hit.foreignKey]: id,
 					},
 				});
 
 				if (entities?.length) {
-					throw new ConflictException(
-						`Can't remove ${
-							context.entityName
-						}. There are some links existing ${relationName}: ${entities
-							.map((v) => v.id)
-							.join(', ')}`,
-					);
+					throwError(entities);
 				}
-			}
-		}
-	}
-
-	/**
-	 * Uploads
-	 */
-	public async validateUploadCreateRequest(
-		context: CrudService<T>,
-		dto: Record<string, any>,
-		files: Files,
-	): Promise<void> {
-		for (const upload of context.getUploads(dto)) {
-			await context.upload.validateRequest({
-				propName: upload.name,
-				type: upload.type,
-				files,
-				minCount: upload.minCount,
-				maxCount: upload.maxCount,
-			});
-		}
-	}
-
-	public async validateUploadUpdateRequest(
-		context: CrudService<T>,
-		id: string,
-		dto: Record<string, any>,
-		files: Files,
-	): Promise<void> {
-		const entity = await context.findOneById(id);
-		const parentUploads = context
-			.getUploads(dto)
-			.filter((v) => context.getUploadRelations().includes(v.name));
-		await this.validateUploadUpdateRequestHelper(context, parentUploads, files, dto, entity);
-
-		const childModel = context.getChildModel(dto);
-		if (childModel) {
-			const childEntity = await childModel.findOne({
-				where: { [context.getChildModelKey()]: id },
-			});
-
-			const childUploads = context
-				.getUploads(dto)
-				.filter((v) => context.getUploadRelations(childModel).includes(v.name));
-			await this.validateUploadUpdateRequestHelper(context, childUploads, files, dto, childEntity);
-		}
-	}
-
-	protected async validateUploadUpdateRequestHelper(
-		context: CrudService<T>,
-		uploads,
-		files: Files,
-		dto: Record<string, any>,
-		entity: Record<string, any>,
-	): Promise<void> {
-		for (const upload of uploads) {
-			await context.upload.validateRequest({
-				propName: upload.name,
-				type: upload.type,
-				files,
-				dto,
-				entity,
-				minCount: upload.minCount,
-				maxCount: upload.maxCount,
-			});
-		}
-	}
-
-	/**
-	 * Others
-	 */
-	protected async validateSameCodeIfNecessary(
-		context: CrudService<T>,
-		id: string | null,
-		dto: Record<string, any>,
-	): Promise<void> {
-		if (!isEmpty(dto.code)) {
-			const entityWithSameCode = await context.findOne({ where: { code: dto.code }, include: [] });
-			if (entityWithSameCode && entityWithSameCode['id'] !== id) {
-				throw new ConflictException(`Сущность с code ${dto.code} уже существует`);
 			}
 		}
 	}

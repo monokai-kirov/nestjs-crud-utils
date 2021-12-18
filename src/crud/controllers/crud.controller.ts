@@ -1,10 +1,8 @@
 import {
 	Body,
-	DefaultValuePipe,
 	Delete,
 	Get,
 	Param,
-	ParseUUIDPipe,
 	Post,
 	Put,
 	Query,
@@ -15,16 +13,13 @@ import {
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes } from '@nestjs/swagger';
 import { ApiImplicitQueries } from 'nestjs-swagger-api-implicit-queries-decorator';
-import { ApiResponseDecorator } from '../../decorators/api.response.decorator';
-import { OptionalBooleanQueryValidationPipe } from '../../pipes/optional.boolean.query.validation.pipe';
-import { BulkDto } from '../dto/bulk.dto';
+import { ApiResponseDecorator } from '../../utils/decorators/api.response.decorator';
+import { OptionalBooleanQueryValidationPipe } from '../../utils';
+import { BulkCreateUpdateDto } from '../dto/bulk.create.update.dto';
+import { BulkDeleteDto } from '../dto/bulk.delete.dto';
 import { CrudService } from '../services/crud.service';
 import { Request } from 'express';
-
-type CrudResponse = {
-	statusCode: number;
-	[key: string]: any;
-};
+import { CrudResponse } from '../types';
 
 export class CrudController {
 	protected readonly service: CrudService<any>;
@@ -42,21 +37,38 @@ export class CrudController {
 		{ code: 200, description: 'entities: ${Entity[]}, totalCount: ${totalCount}' },
 	])
 	@Get()
-	async get(
-		@Query('offset', new DefaultValuePipe(0)) offset: number,
+	async getAll(
+		@Query('offset') offset: number,
 		@Query('limit') limit?: string | number,
 		@Query('search') search?: string,
 		...rest: any[]
 	): Promise<CrudResponse> {
 		return {
 			statusCode: 200,
-			...(await this.service.findWithPagination({ search, offset, limit })),
+			...(await this.service.findWithPagination({
+				search,
+				searchingProps: this.service.getSearchingProps(),
+				offset,
+				limit,
+				include: this.service.getListInclude(),
+			})),
+		};
+	}
+
+	@ApiResponseDecorator([400, { code: 200, description: 'entity: ${Entity}' }])
+	@Get(':id')
+	async getById(@Param('id') id: string, ...rest: any[]): Promise<CrudResponse> {
+		return {
+			statusCode: 200,
+			entity: await this.service.validateMandatoryId(id, {
+				include: this.service.getDetailInclude() as any,
+			}),
 		};
 	}
 
 	@ApiConsumes('multipart/form-data')
+	@ApiResponseDecorator([400, { code: 201, description: 'entity: ${Entity[]}' }])
 	@UseInterceptors(AnyFilesInterceptor())
-	@ApiResponseDecorator([400, 201])
 	@Post()
 	async create(
 		@Body() dto: Record<string, any>,
@@ -69,30 +81,40 @@ export class CrudController {
 		const entity = await this.service.create(transformedDto, transformedFiles, req);
 		return {
 			statusCode: 201,
-			entity: await this.service.findAfterCreateOrUpdate(entity.id),
+			entity: await this.service.findOneById(entity.id, {
+				include: this.service.getDetailInclude(),
+			}),
 		};
 	}
 
+	// TODO: files handling
 	@ApiResponseDecorator([400, 201])
-	@Post('bulk')
+	@UseInterceptors(AnyFilesInterceptor())
+	@Post('bulk/create')
 	async bulkCreate(
-		@Body() dto: BulkDto,
+		@Body() dto: BulkCreateUpdateDto,
 		@Req() req: Request,
 		...rest: any[]
 	): Promise<CrudResponse> {
-		await this.service.validateBeforeBulkCreating(dto, req);
-		await this.service.bulkCreate(dto, req);
+		const chunks = await this.service.validateBeforeBulkCreating(dto, {}, req);
+		const entities = await this.service.bulkCreate(chunks, req);
 		return {
 			statusCode: 201,
+			entities: await this.service.findAllByIds(
+				entities.map((v) => v.id),
+				{ include: this.service.getDetailInclude() },
+			),
 		};
 	}
 
+	// TODO: patchById(), handle class-validator { always: true } issues
+
 	@ApiConsumes('multipart/form-data')
+	@ApiResponseDecorator([400, { code: 200, description: 'entity: ${Entity[]}' }])
 	@UseInterceptors(AnyFilesInterceptor())
-	@ApiResponseDecorator([400, 200])
 	@Put(':id')
-	async update(
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	async putById(
+		@Param('id') id: string,
 		@Body() dto: Record<string, any>,
 		@UploadedFiles() files = {},
 		@Req() req: Request,
@@ -103,21 +125,42 @@ export class CrudController {
 		const entity = await this.service.updateById(id, transformedDto, transformedFiles, req);
 		return {
 			statusCode: 200,
-			entity: await this.service.findAfterCreateOrUpdate(entity.id),
+			entity: await this.service.findOneById(entity.id, {
+				include: this.service.getDetailInclude(),
+			}),
 		};
 	}
 
 	@ApiImplicitQueries([{ name: 'force', required: false }])
 	@ApiResponseDecorator([400, 200])
 	@Delete(':id')
-	async delete(
-		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	async deleteById(
+		@Param('id') id: string,
 		@Query('force', new OptionalBooleanQueryValidationPipe('force')) force?,
 		@Req() req?: Request,
 		...rest: any[]
 	): Promise<CrudResponse> {
 		await this.service.validateBeforeRemoving(id, force, req);
 		await this.service.removeById(id);
+		return {
+			statusCode: 200,
+		};
+	}
+
+	@ApiImplicitQueries([{ name: 'force', required: false }])
+	@ApiResponseDecorator([400, 200])
+	@Delete('bulk/delete')
+	async bulkDelete(
+		@Body() dto: BulkDeleteDto,
+		@Query('force', new OptionalBooleanQueryValidationPipe('force')) force?,
+		@Req() req?: Request,
+		...rest: any[]
+	): Promise<CrudResponse> {
+		const transformedDto = await this.service.validateDto(BulkDeleteDto, dto);
+		for (const id of transformedDto.ids) {
+			await this.service.validateBeforeRemoving(id, force, req);
+			await this.service.removeById(id);
+		}
 		return {
 			statusCode: 200,
 		};

@@ -1,24 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { config } from '../../config';
+import { config } from '../../utils/config';
+import { EmailOptions, EmailSendingResponse } from '../types';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodemailer = require('nodemailer');
 
-type EmailOptions = {
-	from: string;
-	to: string;
-	subject: string;
-	text: string;
-	html: string;
-};
-
-export interface EmailSendingResponse {
-	isEmailSent: boolean;
-}
-
 @Injectable()
 export class EmailService {
-	private transporter;
+	protected transporter;
 
 	constructor(private readonly configService: ConfigService) {
 		this.transporter = nodemailer.createTransport(config.getEmailOptions());
@@ -45,7 +34,7 @@ export class EmailService {
 		}
 	}
 
-	private generateOptions({
+	protected generateOptions({
 		email,
 		title,
 		message,
@@ -65,7 +54,7 @@ export class EmailService {
 		};
 	}
 
-	private generateHtml(title: string, body: string): string {
+	protected generateHtml(title: string, body: string): string {
 		return `<!DOCTYPE html>
 			<html lang="ru">
 			<head>

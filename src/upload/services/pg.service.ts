@@ -1,13 +1,12 @@
-import { Injectable } from '@nestjs/common';
-import { config } from '../../config';
 import createSubscriber from 'pg-listen';
+import { PgListenHandler } from '..';
+import { config } from '../../utils/config';
 
-@Injectable()
 export class PgService {
-	private subscriber;
+	protected subscriber;
 
-	constructor() {
-		const options = config.getDatabaseOptions();
+	public async subscribeToPgChannel() {
+		const options = await config.getDatabaseOptionsWithLeaderChecking();
 		this.subscriber = createSubscriber({
 			connectionString: `postgres://${options.username}:${options.password}@${options.host}:${options.port}/${options.database}`,
 		});
@@ -20,8 +19,12 @@ export class PgService {
 		this.subscriber.connect();
 	}
 
-	public async addEventListener(event: string, listener: (payload) => void): Promise<void> {
-		this.subscriber.notifications.on(event, listener);
-		await this.subscriber.listenTo(event);
+	public async listenTo(eventName: string, pgListenHandler: PgListenHandler): Promise<void> {
+		this.subscriber.notifications.on(eventName, async (payload) => {
+			await pgListenHandler(payload.row);
+		});
+		await this.subscriber.listenTo(eventName);
 	}
 }
+
+export const pgService = new PgService();

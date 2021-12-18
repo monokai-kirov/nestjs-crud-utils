@@ -1,43 +1,33 @@
-import { UploadService } from '../../upload/services/upload.service';
-import { utils } from '../../utils';
-import { EntityService, Include } from './entity.service';
-import { UPLOAD_METADATA_KEY } from '../../decorators/upload.decorator';
 import { Op } from 'sequelize';
 import { Model } from 'sequelize-typescript';
-import { ADVANCED_MULTIPLE_RELATON_METADATA_KEY } from '../../decorators/advanced.object.multiple.relation.decorator';
-import { crudValidationService, CrudValidationService } from './crud.validation.service';
-import { config } from '../../config';
-import { plainToClass } from 'class-transformer';
-import { Upload } from '../../upload/models/upload.model';
-import { UploadParam } from '../../upload/services/upload.service';
 import { Request } from 'express';
-
-export type CrudOptions = {
-	withDtoValidation?: boolean;
-	withRelationValidation?: boolean;
-	withUploadValidation?: boolean;
-	withTriggersCreation?: boolean;
-	withActiveUpdate?: false | ActiveUpdate;
-	unscoped?: boolean;
-	additionalScopes?: string[];
-	childModels?: any[];
-};
-
-export interface ActiveUpdate {
-	calcActive?: (dto) => boolean;
-	childs: Array<Record<string, any> | ActiveUpdateOption>;
-}
-export interface ActiveUpdateOption {
-	model: any;
-	field: string;
-	trueValue: boolean | string;
-	falsyValue: boolean | string;
-}
-
-export type Files = { [key: string]: any } | any[];
+import { isEmpty } from 'class-validator';
+import { plainToClass } from 'class-transformer';
+import {
+	ActiveUpdate,
+	ActiveUpdateOption,
+	CrudOptions,
+	Files,
+	Include,
+	SearchingProps,
+	ValidateResult,
+} from '../types';
+import { utils } from '../../utils/utils';
+import { config } from '../../utils/config';
+import { EntityService } from './entity.service';
+import { crudValidationService, CrudValidationService } from './crud.validation.service';
+import { Upload } from '../../upload/models/upload.model';
+import { UploadParam } from '../../upload/types';
+import { UPLOAD_METADATA_KEY } from '../../utils/decorators/upload.decorator';
+import { UploadService } from '../../upload/services/upload.service';
+import { ADVANCED_MULTIPLE_RELATON_METADATA_KEY } from '../../utils/decorators/advanced.object.multiple.relation.decorator';
 
 export class CrudService<T> extends EntityService<T> {
-	public static DEFAULT_CRUD_OPTIONS: CrudOptions = {
+	public readonly crudOptions: CrudOptions = {};
+	public readonly upload: UploadService;
+	protected readonly dtoType;
+	protected readonly crudValidationService: CrudValidationService<T>;
+	protected static readonly DEFAULT_CRUD_OPTIONS: CrudOptions = {
 		withDtoValidation: true,
 		withRelationValidation: true,
 		withUploadValidation: true,
@@ -47,10 +37,6 @@ export class CrudService<T> extends EntityService<T> {
 		additionalScopes: [],
 		childModels: [],
 	};
-	public readonly crudOptions: CrudOptions = {};
-	public readonly upload: UploadService;
-	protected readonly dtoType;
-	protected readonly crudValidationService: CrudValidationService<T>;
 
 	constructor(
 		crudModel,
@@ -59,56 +45,51 @@ export class CrudService<T> extends EntityService<T> {
 		options: CrudOptions = {},
 	) {
 		super(crudModel, {
-			unscoped:
-				options.unscoped !== undefined
-					? options.unscoped
-					: CrudService.DEFAULT_CRUD_OPTIONS.unscoped,
-			unscopedInclude:
-				options.unscoped !== undefined
-					? options.unscoped
-					: CrudService.DEFAULT_CRUD_OPTIONS.unscoped,
+			unscoped: options.unscoped ?? CrudService.DEFAULT_CRUD_OPTIONS.unscoped,
+			unscopedInclude: options.unscoped ?? CrudService.DEFAULT_CRUD_OPTIONS.unscoped,
 			additionalScopes:
-				options.additionalScopes !== undefined
-					? options.additionalScopes
-					: CrudService.DEFAULT_CRUD_OPTIONS.additionalScopes,
+				options.additionalScopes ?? CrudService.DEFAULT_CRUD_OPTIONS.additionalScopes,
 		});
 
-		const crudOptions = { ...CrudService.DEFAULT_CRUD_OPTIONS, ...options };
-		for (const prop in crudOptions) {
-			if (Object.hasOwnProperty.call(crudOptions, prop)) {
-				this.crudOptions[prop] = crudOptions[prop];
-			}
-		}
-
+		this.crudOptions = { ...CrudService.DEFAULT_CRUD_OPTIONS, ...options };
 		this.upload = uploadService;
 		this.dtoType = dtoType;
 		this.crudValidationService = crudValidationService;
 
+		this.checkInclude(this.getListInclude(), 'list');
+		this.checkInclude(this.getDetailInclude(), 'detail');
 		this.checkConflictRelations();
-
-		if (this.crudOptions.withTriggersCreation) {
-			this.upload.createRemovingTriggers(crudModel);
-
-			for (const childModel of this.crudOptions.childModels) {
-				this.upload.createRemovingTriggers(childModel);
-			}
-		}
+		this.createTriggersIfNecessary(crudModel);
 	}
 
 	public getDtoType(dto: Record<string, any>): any {
 		return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
 	}
 
-	protected getIncludeOptions(): Include {
+	/**
+	 * Is used in getAll() in CrudController
+	 */
+	public getListInclude(): Include {
 		return { all: true };
 	}
 
-	protected getSearchingProps(): Array<
-		string | string[] | { property: string | string[]; transform: (value: any) => any }
-	> {
+	/**
+	 * Is used in getById(), create(), bulkCreate(), putById() in CrudController
+	 */
+	public getDetailInclude(): Include {
+		return { all: true };
+	}
+
+	/**
+	 * For getAll() method in CrudController
+	 */
+	public getSearchingProps(): SearchingProps {
 		return ['id', 'title'];
 	}
 
+	/**
+	 * By default all links don't allow to delete the entity, you can override this behaviour
+	 */
 	public getConflictRelations(): string[] {
 		return Object.entries(this.__crudModel__.associations)
 			.filter(
@@ -119,6 +100,17 @@ export class CrudService<T> extends EntityService<T> {
 			.map(([key, value]: any) => key);
 	}
 
+	public getChildModel(dto: Record<string, any>): Model {
+		return null;
+	}
+
+	public getChildModelKey(): string | null {
+		return null;
+	}
+
+	/**
+	 * If you want to add some new properties before saving
+	 */
 	protected async fillDto(
 		id: string | null,
 		dto: Record<string, any>,
@@ -127,16 +119,90 @@ export class CrudService<T> extends EntityService<T> {
 		return dto;
 	}
 
-	public async findAfterCreateOrUpdate(id: string): Promise<T> {
-		return this.findOneById(id);
+	/**
+	 * You can override this functions if you intend to handle custom cases of validation
+	 */
+	public async validateRequest(
+		id: string | null,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		return { dto, files };
 	}
 
-	public getChildModel(dto: Record<string, any>): any {
-		return null;
+	public async validateCreateRequest(
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		return { dto, files };
 	}
 
-	public getChildModelKey(): string | null {
-		return null;
+	public async validateUpdateRequest(
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		return { dto, files };
+	}
+
+	public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
+	//---------------------------------------------
+
+	public async validateBeforeCreating(
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		return this.crudValidationService.validateBeforeCreating(this, dto, files, req);
+	}
+
+	public async validateBeforeBulkCreating(
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult[]> {
+		return this.crudValidationService.validateBeforeBulkCreating(this, dto, files, req);
+	}
+
+	public async validateBeforeUpdating(
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult> {
+		return this.crudValidationService.validateBeforeUpdating(this, id, dto, files, req);
+	}
+
+	public async validateBeforeRemoving(id: string, force?: boolean, req?: Request): Promise<void> {
+		return this.crudValidationService.validateBeforeRemoving(this, id, force, req);
+	}
+
+	public async create(dto: Record<string, any>, files: Files, req: Request): Promise<T> {
+		return this.updateHelper(this.__crudModel__.build(), dto, files, req);
+	}
+
+	public async bulkCreate(chunks: Record<string, any>[], req: Request): Promise<T[]> {
+		const entities = [];
+		for (const chunk of chunks) {
+			entities.push(await this.updateHelper(this.__crudModel__.build(), chunk.dto, {}, req));
+		}
+		return entities;
+	}
+
+	public async updateById(
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<T> {
+		return this.updateHelper(await this.findOneById(id), dto, files, req);
+	}
+
+	public async removeById(id: string): Promise<void> {
+		await this.__crudModel__.destroy({ where: { id } } as any);
 	}
 
 	public getUploads(dto?: Record<string, any>): Array<UploadParam> {
@@ -147,154 +213,52 @@ export class CrudService<T> extends EntityService<T> {
 		return this.getMetadataHelper(ADVANCED_MULTIPLE_RELATON_METADATA_KEY, dto);
 	}
 
-	private getMetadataHelper(key: string, dto?) {
+	public transformDto(dto: Record<string, any>): any {
+		return this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
+	}
+
+	protected getMetadataHelper(key: string, dto?) {
 		if (!this.getDtoType(dto)?.prototype) {
 			return [];
 		}
 		return Reflect.getMetadata(key, this.getDtoType(dto).prototype) ?? [];
 	}
 
-	public normalizeFiles(requestedFiles: Files = []): {
-		[key: string]: any;
-	} {
-		if (!Array.isArray(requestedFiles)) {
-			return requestedFiles;
-		}
-
-		const files = {};
-		for (const requestedFile of requestedFiles) {
-			if (!files[requestedFile.fieldname]) {
-				files[requestedFile.fieldname] = [];
-			}
-			files[requestedFile.fieldname].push(requestedFile);
-		}
-		return files;
-	}
-
-	/**
-	 * Validations
-	 */
-	public async validateBeforeCreating(
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<{ dto: Record<string, any>; files: Files; [key: string]: any }> {
-		return this.crudValidationService.validateBeforeCreating(this, dto, files, req);
-	}
-
-	public async validateBeforeBulkCreating(dto: Record<string, any>, req: Request): Promise<void> {
-		return this.crudValidationService.validateBeforeBulkCreating(this, dto, req);
-	}
-
-	public async validateBeforeUpdating(
-		id: string,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<{ dto: Record<string, any>; files: Files; [key: string]: any }> {
-		return this.crudValidationService.validateBeforeUpdating(this, id, dto, files, req);
-	}
-
-	public async validateBeforeRemoving(id: string, force?: boolean, req?: Request): Promise<void> {
-		return this.crudValidationService.validateBeforeRemoving(this, id, force, req);
-	}
-
-	public async validateRequest(
-		id: string | null,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<{ dto: Record<string, any>; files: Files }> {
-		return { dto, files };
-	}
-
-	public async validateCreateRequest(
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<{ dto; files }> {
-		return { dto, files };
-	}
-
-	public async validateUpdateRequest(
-		id: string,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<{ dto: Record<string, any>; files: Files }> {
-		return { dto, files };
-	}
-
-	public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
-
-	/**
-	 * Create/update/delete
-	 */
-	public async create(dto: Record<string, any>, files: Files, req: Request): Promise<T> {
-		dto = await this.fillDto(null, dto, req);
-		dto = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
-
-		let entity = this.__crudModel__.build();
-		entity = await this.updateProperties(entity, dto, req);
-		await this.updateRelations(entity, dto, files, req);
-		await this.updateUploads(entity, dto, files);
-
-		if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
-			await this.updateActive(entity, dto);
-		}
-		return entity;
-	}
-
-	public async bulkCreate(dto: Record<string, any>, req: Request): Promise<void> {
-		for (let chunk of dto.bulk) {
-			if (this.crudOptions.withDtoValidation) {
-				chunk = await this.validateDto(this.getDtoType(chunk), chunk);
-			}
-			chunk = await this.fillDto(null, chunk, req);
-			chunk = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), chunk) : chunk;
-
-			let entity = this.__crudModel__.build();
-			entity = await this.updateProperties(entity, chunk, req);
-			await this.updateRelations(entity, chunk, {}, req);
-
-			if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
-				await this.updateActive(entity, chunk);
-			}
-		}
-	}
-
-	public async updateById(
-		id: string,
+	protected async updateHelper(
+		entity: T,
 		dto: Record<string, any>,
 		files: Files,
 		req: Request,
 	): Promise<T> {
-		dto = await this.fillDto(id, dto, req);
-		dto = this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
-
-		let entity = await this.findOneById(id, { include: [] });
-		entity = await this.updateProperties(entity, dto, req);
-		await this.updateRelations(entity, dto, files, req);
-		await this.updateUploads(entity, dto, files);
+		const transformedDto = this.transformDto(
+			await this.fillDto(entity['isNewRecord'] ? null : entity['id'], dto, req),
+		);
+		entity = await this.updateProperties(entity, transformedDto, req, 'parent');
+		await this.updateRelations(entity, transformedDto, files, req);
+		await this.updateUploads(entity, transformedDto, files);
 
 		if ((this.crudOptions.withActiveUpdate as ActiveUpdate)?.childs?.length) {
-			await this.updateActive(entity, dto);
+			await this.updateActive(entity, transformedDto);
 		}
 		return entity;
 	}
 
-	protected async updateProperties(entity: T, dto: Record<string, any>, req: Request): Promise<T> {
+	protected async updateProperties(
+		entity: T,
+		dto: Record<string, any>,
+		req: Request,
+		context: 'parent' | 'child',
+	): Promise<T> {
 		const parentSingleRelations = this.getSingleRelations().map((v) => v.name);
 		const parentMultipleRelations = this.getMultipleRelations().map((v) => v.name);
 		const uploads = this.getUploads(dto).map((v) => v.name);
-		let childSingleRelations = [];
-		let childMultipleRelations = [];
-
 		const childModel = this.getChildModel(dto);
-		if (childModel) {
-			childSingleRelations = this.getSingleRelations(childModel).map((v) => v.name);
-			childMultipleRelations = this.getMultipleRelations(childModel).map((v) => v.name);
-		}
+		const childSingleRelations = childModel
+			? this.getSingleRelations(childModel).map((v) => v.name)
+			: [];
+		const childMultipleRelations = childModel
+			? this.getMultipleRelations(childModel).map((v) => v.name)
+			: [];
 
 		for (const prop in dto) {
 			if (Object.prototype.hasOwnProperty.call(dto, prop)) {
@@ -307,7 +271,8 @@ export class CrudService<T> extends EntityService<T> {
 					continue;
 				}
 
-				if (parentSingleRelations.includes(prop)) {
+				const relations = context === 'parent' ? parentSingleRelations : childSingleRelations;
+				if (relations.includes(prop)) {
 					entity[`${prop}Id`] = dto[prop] ?? null;
 				} else {
 					entity[prop] = dto[prop];
@@ -354,31 +319,7 @@ export class CrudService<T> extends EntityService<T> {
 			childEntity = childModel.build();
 			childEntity[this.getChildModelKey()] = entity.id;
 		}
-
-		const parentSingleRelations = this.getSingleRelations().map((v) => v.name);
-		const parentMultipleRelations = this.getMultipleRelations().map((v) => v.name);
-		const uploads = this.getUploads(dto).map((v) => v.name);
-		const childSingleRelations = this.getSingleRelations(childModel).map((v) => v.name);
-		const childMultipleRelations = this.getMultipleRelations(childModel).map((v) => v.name);
-
-		for (const prop in dto) {
-			if (
-				parentSingleRelations.includes(prop) ||
-				parentMultipleRelations.includes(prop) ||
-				uploads.includes(prop) ||
-				childMultipleRelations.includes(prop)
-			) {
-				continue;
-			}
-
-			if (childSingleRelations.includes(prop)) {
-				childEntity[`${prop}Id`] = dto[prop] ?? null;
-			} else {
-				childEntity[prop] = dto[prop];
-			}
-		}
-
-		childEntity = await childEntity.save();
+		childEntity = await this.updateProperties(childEntity, dto, req, 'child');
 
 		for (const childRelation of this.getMultipleRelations(childModel)) {
 			if (dto[childRelation.name]) {
@@ -414,83 +355,95 @@ export class CrudService<T> extends EntityService<T> {
 				await entityToRemove.destroy();
 			}
 
-			await Promise.all(
-				input
-					.filter((v) => v.id)
-					.map(async (values) => {
-						let link: Model = existingEntities.find((v) => v.id === values.id);
-						for (const [key, value] of Object.entries(values)) {
-							if (key !== 'id') {
-								link[key] = value;
-							}
-						}
-						link = await link.save();
-
-						for (const linkRelation of this.getMultipleRelations(association.target)) {
-							if (values[linkRelation.name]) {
-								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
-									values[linkRelation.name] ?? [],
-								);
-							}
-						}
-					}),
-			);
-
-			await Promise.all(
-				input
-					.filter((v) => !v.id)
-					.map(async (values) => {
-						const link: Model = await association.target.create({
-							[utils.snakeCaseToCamel(association.foreignKey)]: entity['id'],
-							...values,
-						});
-
-						for (const linkRelation of this.getMultipleRelations(association.target)) {
-							if (values[linkRelation.name]) {
-								await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
-									values[linkRelation.name],
-								);
-							}
-						}
-					}),
-			);
+			await this.createAdvancedMultipleRelationsHelper(input, association, entity);
+			await this.updateAdvancedMultipleRelationsHelper(input, association, existingEntities);
 		}
 	}
 
-	protected async updateUploads(entity: T, dto: Record<string, any>, files: Files): Promise<void> {
-		const parentUploads = this.getUploads(dto).filter((v) =>
-			this.getUploadRelations().includes(v.name),
+	protected async createAdvancedMultipleRelationsHelper(
+		input: any,
+		association: any,
+		entity: T,
+	): Promise<void> {
+		await Promise.all(
+			input
+				.filter((v) => !v.id)
+				.map(async (values) => {
+					const link: Model = await association.target.create({
+						[utils.snakeCaseToCamel(association.foreignKey)]: entity['id'],
+						...values,
+					});
+
+					for (const linkRelation of this.getMultipleRelations(association.target)) {
+						if (values[linkRelation.name]) {
+							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
+								values[linkRelation.name],
+							);
+						}
+					}
+				}),
 		);
-		await this.updateUploadsHelper(parentUploads, files, dto, entity);
+	}
+
+	protected async updateAdvancedMultipleRelationsHelper(
+		input: any,
+		association: any,
+		existingEntities: any[],
+	): Promise<void> {
+		await Promise.all(
+			input
+				.filter((v) => v.id)
+				.map(async (values) => {
+					let link: Model = existingEntities.find((v) => v.id === values.id);
+					for (const [key, value] of Object.entries(values)) {
+						if (key !== 'id') {
+							link[key] = value;
+						}
+					}
+					link = await link.save();
+
+					for (const linkRelation of this.getMultipleRelations(association.target)) {
+						if (values[linkRelation.name]) {
+							await (link as any)[`set${utils.ucFirst(linkRelation.name)}`](
+								values[linkRelation.name] ?? [],
+							);
+						}
+					}
+				}),
+		);
+	}
+
+	protected async updateUploads(entity: T, dto: Record<string, any>, files: Files): Promise<void> {
+		await this.updateUploadsHelper(files, dto, entity);
 
 		const childModel = this.getChildModel(dto);
 		if (childModel) {
-			const childEntity = await childModel.findOne({
+			const childEntity = await (childModel as any).findOne({
 				where: { [this.getChildModelKey()]: entity['id'] },
 			});
-
-			const childUploads = this.getUploads(dto).filter((v) =>
-				this.getUploadRelations(childModel).includes(v.name),
-			);
-			await this.updateUploadsHelper(childUploads, files, dto, childEntity);
+			await this.updateUploadsHelper(files, dto, childEntity, childModel);
 		}
 	}
 
 	protected async updateUploadsHelper(
-		uploads,
 		files: Files,
 		dto: Record<string, any>,
 		entity: T,
+		childModel?: any,
 	): Promise<void> {
+		const uploads = this.getUploads(dto).filter((v) =>
+			(childModel ? this.getUploadRelations(childModel) : this.getUploadRelations()).includes(
+				v.name,
+			),
+		);
+
 		for (const upload of uploads) {
 			await this.upload.createOrUpdate({
 				propName: upload.name,
 				files,
 				dto,
 				entity,
-				width: upload.width,
-				height: upload.height,
-				handlePicture: upload.handlePicture,
+				resizeOptions: upload.resizeOptions,
 				uploadFolder: `${config.getUploadOptions().folders[0]}/${this.tableName}`,
 			});
 		}
@@ -602,11 +555,11 @@ export class CrudService<T> extends EntityService<T> {
 		);
 	}
 
-	private isAssociationLinked(
+	protected isAssociationLinked(
 		comparisonModels: Record<string, any>[],
 		model: Record<string, any>,
 		processedManyToMany: any[],
-	) {
+	): boolean {
 		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
 		let isLinked = false;
 
@@ -635,21 +588,63 @@ export class CrudService<T> extends EntityService<T> {
 		return isLinked;
 	}
 
-	public async removeById(id: string): Promise<void> {
-		await this.crudModel.destroy({ where: { id } } as any);
+	protected checkInclude(include: Include, method: string): void {
+		if (isEmpty((include as Record<string, any>)?.all)) {
+			(include as Record<string, any>[]).forEach((child) =>
+				this.checkIncludeHelper(this.__crudModel__.prototype.constructor, child, method),
+			);
+		}
 	}
 
-	/**
-	 * Checking
-	 */
-	public checkConflictRelations(): void {
+	protected checkIncludeHelper(parent: any, child: any, method: string): void {
+		const childModel = child.model ?? child;
+		const throwError = () => {
+			throw new Error(
+				`Please check method get${utils.ucFirst(method)}Include() on model ${
+					this.entityName
+				}, link ${this.getEntityNameByModel(parent)} with ${this.getEntityNameByModel(
+					childModel,
+				)} doesn't exist`,
+			);
+		};
+
+		if (typeof childModel.getTableName !== 'function') {
+			throwError();
+		}
+
+		const associations = Object.entries(parent.associations).map(
+			([key, value]) => (value as any).target,
+		);
+		const associationWithSameTableName = associations.find(
+			(v) => v.getTableName() === childModel.getTableName(),
+		);
+		if (!associations.includes(childModel) && !associationWithSameTableName) {
+			throwError();
+		}
+
+		if (child.include) {
+			child.include.forEach((subChild) => this.checkIncludeHelper(childModel, subChild, method));
+		}
+	}
+
+	protected checkConflictRelations(): void {
 		const associations = Object.keys(this.__crudModel__.associations);
 		this.getConflictRelations().forEach((relation) => {
 			if (!associations.includes(relation)) {
 				throw new Error(
-					`Please check method getConflictRelations() on model ${this.entityName}, link ${relation} doesn't exist`,
+					`Please check method getConflictRelations() on model ${this.entityName}, link '${relation}' doesn't exist`,
 				);
 			}
 		});
+	}
+
+	protected createTriggersIfNecessary(crudModel: any): void {
+		if (this.crudOptions.withTriggersCreation) {
+			this.upload.createRemovingTriggers(crudModel);
+
+			for (const childModel of this.crudOptions.childModels) {
+				this.upload.createRemovingTriggers(childModel);
+			}
+		}
 	}
 }

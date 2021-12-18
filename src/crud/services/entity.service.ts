@@ -1,60 +1,34 @@
-import { isEmpty } from 'class-validator';
 import { Op } from 'sequelize';
 import { Sequelize, Model } from 'sequelize-typescript';
-import { Upload } from '../../upload/models/upload.model';
+import { EntityOptions, Include, SearchingProps } from '../types';
 import { correctionService, CorrectionService } from './correction.service';
 import { validationService, ValidationService } from './validation.service';
-
-export type EntityOptions = {
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-};
-
-export type Include = { all: boolean } | Record<string, any>[];
+import { Upload } from '../../upload/models/upload.model';
 
 export class EntityService<T> {
-	public static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {
+	public readonly __crudModel__;
+	public readonly entityOptions: EntityOptions = {};
+	public readonly correctionService: CorrectionService<T>;
+	public readonly validationService: ValidationService<T>;
+	protected static readonly DEFAULT_ENTITY_OPTIONS: EntityOptions = {
 		unscoped: false,
 		unscopedInclude: false,
 		additionalScopes: [],
 	};
-	public readonly entityOptions: EntityOptions = {};
-	public readonly correctionService: CorrectionService<T>;
-	public readonly validationService: ValidationService<T>;
-	public readonly __crudModel__;
 
 	constructor(crudModel: Record<string, any>, options: EntityOptions = {}) {
-		const entityOptions = { ...EntityService.DEFAULT_ENTITY_OPTIONS, ...options };
-		for (const prop in entityOptions) {
-			if (Object.hasOwnProperty.call(entityOptions, prop)) {
-				this.entityOptions[prop] = entityOptions[prop];
-			}
-		}
-
+		this.__crudModel__ = crudModel;
+		this.entityOptions = { ...EntityService.DEFAULT_ENTITY_OPTIONS, ...options };
 		this.correctionService = correctionService;
 		this.validationService = validationService as ValidationService<T>;
-		this.__crudModel__ = crudModel;
-
-		this.checkIncludeOptions();
 	}
 
-	protected getIncludeOptions(): Include {
-		return [];
-	}
-
-	protected getSearchingProps(): Array<
-		string | string[] | { property: string | string[]; transform: (value: any) => any }
-	> {
-		return ['id', 'title'];
+	public getMaxEntitiesPerPage(): number {
+		return 30;
 	}
 
 	public get crudModel(): Model {
-		return this.correctionService.unscopedHelper(
-			this,
-			this.entityOptions.unscoped,
-			this.entityOptions.additionalScopes,
-		);
+		return this.unscoped(this.entityOptions.unscoped, this.entityOptions.additionalScopes);
 	}
 
 	public get tableName(): string {
@@ -69,58 +43,236 @@ export class EntityService<T> {
 		return model ? model.prototype.constructor.name : this.entityName;
 	}
 
-	public getMaxEntitiesPerPage(): number {
-		return 30;
+	public async findWithPagination({
+		where = {},
+		search = '',
+		searchingProps = [],
+		include = [],
+		offset = 0,
+		limit = this.getMaxEntitiesPerPage(),
+		page,
+		order = [],
+		group,
+		unscoped = this.entityOptions.unscoped,
+		unscopedInclude = this.entityOptions.unscopedInclude,
+		additionalScopes = this.entityOptions.additionalScopes,
+		...args
+	}: {
+		where?: Record<string, any>;
+		search?: string;
+		searchingProps?: SearchingProps;
+		include?: Include;
+		offset?: number;
+		limit?: string | number;
+		page?: number;
+		order?: any[];
+		group?: any;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<{ entities: T[]; totalCount: number }> {
+		const findOptions = {
+			where,
+			include,
+			unscoped,
+			unscopedInclude,
+			additionalScopes,
+			...args,
+		};
+
+		if (search) {
+			this.addSearchToFindOptions(search, findOptions, searchingProps);
+		}
+
+		const totalCount = await this.count(findOptions);
+
+		let transformedOffset, transformedLimit;
+		if (page) {
+			const transformedPage = this.validationService.validatePage(page);
+			transformedOffset =
+				(transformedPage - 1) * (typeof limit === 'string' ? parseInt(limit) : limit);
+			transformedLimit = limit;
+		} else {
+			({ offset: transformedOffset, limit: transformedLimit } =
+				this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount));
+		}
+
+		return {
+			entities: await this.findAll({
+				...findOptions,
+				...(transformedOffset !== 0 ? { offset: transformedOffset } : {}),
+				limit: transformedLimit,
+				order,
+			}),
+			totalCount,
+		};
 	}
 
-	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload,
-			)
-			.map(([key, value]: any) => {
-				return {
-					name: key,
-					model: value.target,
-				};
-			});
-	}
-
-	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					['BelongsToMany', 'HasMany'].includes(value.associationType) &&
-					value.target.prototype.constructor !== Upload,
-			)
-			.map(([key, value]: any) => {
-				return {
-					name: key,
-					model: value.target,
-				};
-			});
-	}
-
-	public getUploadRelations(model?): string[] {
-		return Object.entries((model ? model : this.__crudModel__).associations)
-			.filter(
-				([key, value]: any) =>
-					['BelongsTo', 'BelongsToMany'].includes(value.associationType) &&
-					value.target.prototype.constructor === Upload,
-			)
-			.map(([key, value]: any) => key);
-	}
-
-	public getAllAssociations(): any {
-		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
-			return value.target.prototype.constructor;
+	public async findOne({
+		where = {},
+		include = [],
+		group,
+		unscoped = this.entityOptions.unscoped,
+		unscopedInclude = this.entityOptions.unscopedInclude,
+		additionalScopes = this.entityOptions.additionalScopes,
+		...args
+	}: {
+		where?: Record<string, any>;
+		include?: Include;
+		group?: any;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<T | null> {
+		return this.unscoped(unscoped, additionalScopes).findOne({
+			where,
+			include: this.correctionService.getCorrectInclude(
+				this,
+				unscopedInclude,
+				include,
+				where,
+				group,
+			),
+			...args,
 		});
 	}
 
-	/**
-	 * Validations
-	 */
+	public async findOneById(
+		id: string,
+		{
+			where = {},
+			include = [],
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+			...args
+		}: {
+			where?: Record<string, any>;
+			include?: Include;
+			unscoped?: boolean;
+			unscopedInclude?: boolean;
+			additionalScopes?: string[];
+			[key: string]: any;
+		} = {},
+	): Promise<T | null> {
+		return this.unscoped(unscoped, additionalScopes).findOne({
+			where: {
+				id,
+				...where,
+			},
+			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
+			...args,
+		});
+	}
+
+	public async findAll({
+		where = {},
+		include = [],
+		order = [],
+		group,
+		unscoped = this.entityOptions.unscoped,
+		unscopedInclude = this.entityOptions.unscopedInclude,
+		additionalScopes = this.entityOptions.additionalScopes,
+		...args
+	}: {
+		where?: Record<string, any>;
+		include?: Include;
+		order?: any[];
+		group?: any;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<T[]> {
+		return this.unscoped(unscoped, additionalScopes).findAll({
+			where,
+			include: this.correctionService.getCorrectInclude(
+				this,
+				unscopedInclude,
+				include,
+				where,
+				group,
+			),
+			order: this.correctionService.addCorrectOrderIfNecessary(this, order, group),
+			...args,
+		});
+	}
+
+	public async findAllByIds(
+		ids: string[],
+		{
+			where = {},
+			include = [],
+			order = [],
+			group,
+			unscoped = this.entityOptions.unscoped,
+			unscopedInclude = this.entityOptions.unscopedInclude,
+			additionalScopes = this.entityOptions.additionalScopes,
+			...args
+		}: {
+			where?: Record<string, any>;
+			include?: Include;
+			order?: any[];
+			group?: any;
+			unscoped?: boolean;
+			unscopedInclude?: boolean;
+			additionalScopes?: string[];
+			[key: string]: any;
+		} = {},
+	): Promise<T[]> {
+		return this.unscoped(unscoped, additionalScopes).findAll({
+			where: {
+				id: {
+					[Op.in]: ids,
+				},
+				...where,
+			},
+			include: this.correctionService.getCorrectInclude(
+				this,
+				unscopedInclude,
+				include,
+				where,
+				group,
+			),
+			order: this.correctionService.addCorrectOrderIfNecessary(this, order, group),
+			...args,
+		});
+	}
+
+	public async count({
+		where = {},
+		include = [],
+		group,
+		unscoped = this.entityOptions.unscoped,
+		unscopedInclude = this.entityOptions.unscopedInclude,
+		additionalScopes = this.entityOptions.additionalScopes,
+		...args
+	}: {
+		where?: Record<string, any>;
+		include?: Include;
+		group?: any;
+		unscoped?: boolean;
+		unscopedInclude?: boolean;
+		additionalScopes?: string[];
+		[key: string]: any;
+	} = {}): Promise<number> {
+		return this.unscoped(unscoped, additionalScopes).count({
+			where,
+			include: this.correctionService.getCorrectInclude(
+				this,
+				unscopedInclude,
+				include,
+				where,
+				group,
+				true,
+			),
+			distinct: true,
+			...args,
+		});
+	}
+
 	public async validateDto(
 		dtoType: any,
 		dto: Record<string, any>,
@@ -213,73 +365,71 @@ export class EntityService<T> {
 		});
 	}
 
-	/**
-	 * Finders
-	 */
-	public async findWithPagination({
-		search = '',
-		where = {},
-		include = this.getIncludeOptions(),
-		offset = 0,
-		limit = this.getMaxEntitiesPerPage(),
-		page,
-		order = [],
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-		...args
-	}: {
-		search?: string;
-		where?: Record<string, any>;
-		include?: Include;
-		offset?: number;
-		limit?: string | number;
-		page?: number;
-		order?: any[];
-		unscoped?: boolean;
-		unscopedInclude?: boolean;
-		additionalScopes?: string[];
-		[key: string]: any;
-	} = {}): Promise<{ entities: T[]; totalCount: number }> {
-		const findOptions = {
-			where,
-			include,
-			unscoped,
-			unscopedInclude,
-			additionalScopes,
-			...args,
-		};
+	public unscoped(unscoped: boolean, additionalScopes: string[] = [], model = null) {
+		let usedModel = model ?? this.__crudModel__;
+		usedModel = unscoped ? usedModel.unscoped() : usedModel;
 
-		if (search) {
-			this.addSearchToFindOptions(search, findOptions);
+		for (const additionalScope of additionalScopes) {
+			if (usedModel._scopeNames.includes(additionalScope)) {
+				usedModel = usedModel.scope(additionalScope);
+			}
 		}
-
-		const totalCount = await this.count(findOptions);
-
-		let transformedOffset, transformedLimit;
-		if (page) {
-			transformedOffset = (page - 1) * (typeof limit === 'string' ? parseInt(limit) : limit);
-			transformedLimit = limit;
-		} else {
-			({ offset: transformedOffset, limit: transformedLimit } =
-				this.validationService.validateAndParseOffsetAndLimit(this, offset, limit, totalCount));
-		}
-
-		return {
-			entities: await this.findAll({
-				...findOptions,
-				...(transformedOffset !== 0 ? { offset: transformedOffset } : {}),
-				limit: transformedLimit,
-				order,
-			}),
-			totalCount,
-		};
+		return usedModel;
 	}
 
-	protected addSearchToFindOptions(search: string, findOptions: Record<string, any>): void {
+	public getSingleRelations(model?): Array<{ name: string; model: Model }> {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					value.associationType === 'BelongsTo' && value.target.prototype.constructor !== Upload,
+			)
+			.map(([key, value]: any) => {
+				return {
+					name: key,
+					model: value.target,
+				};
+			});
+	}
+
+	public getMultipleRelations(model?): Array<{ name: string; model: Model }> {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					['BelongsToMany', 'HasMany'].includes(value.associationType) &&
+					value.target.prototype.constructor !== Upload,
+			)
+			.map(([key, value]: any) => {
+				return {
+					name: key,
+					model: value.target,
+				};
+			});
+	}
+
+	public getUploadRelations(model?): string[] {
+		return Object.entries((model ? model : this.__crudModel__).associations)
+			.filter(
+				([key, value]: any) =>
+					['BelongsTo', 'BelongsToMany'].includes(value.associationType) &&
+					value.target.prototype.constructor === Upload,
+			)
+			.map(([key, value]: any) => key);
+	}
+
+	public getAllRelations(): any {
+		return Object.entries(this.__crudModel__.associations).map(([key, value]: [any, any]) => {
+			return value.target.prototype.constructor;
+		});
+	}
+
+	protected addSearchToFindOptions(
+		search: string,
+		findOptions: Record<string, any>,
+		searchingProps: SearchingProps,
+	): void {
 		const searchWhere = [];
 
-		for (const option of this.getSearchingProps()) {
+		for (const option of searchingProps) {
 			let property = option;
 			let value = search;
 
@@ -302,6 +452,7 @@ export class EntityService<T> {
 					return `"${this.__crudModel__.name}"."${property}"`;
 				}
 			};
+			const cast = (v) => Sequelize.cast(Sequelize.col(getFinalProperty(v)), 'text');
 
 			if (value) {
 				searchWhere.push(
@@ -309,11 +460,9 @@ export class EntityService<T> {
 						Array.isArray(property)
 							? Sequelize.fn(
 									'concat',
-									...property
-										.map((v) => Sequelize.cast(Sequelize.col(getFinalProperty(v)), 'text'))
-										.reduce((acc, v) => acc.concat(v, ' '), []),
+									...property.map((v) => cast(v)).reduce((acc, v) => acc.concat(v, ' '), []),
 							  )
-							: Sequelize.cast(Sequelize.col(getFinalProperty(property)), 'text'),
+							: cast(property),
 						{ [Op.iLike]: `%${value}%` } as any,
 					),
 				);
@@ -326,179 +475,6 @@ export class EntityService<T> {
 			} else {
 				findOptions.where[Op.or] = searchWhere;
 			}
-		}
-	}
-
-	public async findOne({
-		where = {},
-		include = this.getIncludeOptions(),
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-		...args
-	}: {
-		where?: Record<string, any>;
-		include?: Include;
-		unscoped?: boolean;
-		unscopedInclude?: boolean;
-		additionalScopes?: string[];
-		[key: string]: any;
-	} = {}): Promise<T | null> {
-		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findOne({
-			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
-			...args,
-		});
-	}
-
-	public async findOneById(
-		id: string,
-		{
-			where = {},
-			include = this.getIncludeOptions(),
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-			...args
-		}: {
-			where?: Record<string, any>;
-			include?: Include;
-			unscoped?: boolean;
-			unscopedInclude?: boolean;
-			additionalScopes?: string[];
-			[key: string]: any;
-		} = {},
-	): Promise<T | null> {
-		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findOne({
-			where: {
-				id,
-				...where,
-			},
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
-			...args,
-		});
-	}
-
-	public async findAll({
-		where = {},
-		include = this.getIncludeOptions(),
-		order = [],
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-		...args
-	}: {
-		where?: Record<string, any>;
-		include?: Include;
-		order?: any[];
-		unscoped?: boolean;
-		unscopedInclude?: boolean;
-		additionalScopes?: string[];
-		[key: string]: any;
-	} = {}): Promise<T[]> {
-		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findAll({
-			where,
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
-			order: this.correctionService.addCorrectOrder(this, order, args.group, include, unscoped),
-			...args,
-		});
-	}
-
-	public async findAllByIds(
-		ids: string[],
-		{
-			where = {},
-			include = this.getIncludeOptions(),
-			order = [],
-			unscoped = this.entityOptions.unscoped,
-			unscopedInclude = this.entityOptions.unscopedInclude,
-			additionalScopes = this.entityOptions.additionalScopes,
-			...args
-		}: {
-			where?: Record<string, any>;
-			include?: Include;
-			order?: any[];
-			unscoped?: boolean;
-			unscopedInclude?: boolean;
-			additionalScopes?: string[];
-			[key: string]: any;
-		} = {},
-	): Promise<T[]> {
-		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).findAll({
-			where: {
-				id: {
-					[Op.in]: ids,
-				},
-				...where,
-			},
-			include: this.correctionService.getCorrectInclude(this, unscopedInclude, include, where),
-			order: this.correctionService.addCorrectOrder(this, order, args.group, include, unscoped),
-			...args,
-		});
-	}
-
-	public async count({
-		where = {},
-		include = [],
-		unscoped = this.entityOptions.unscoped,
-		unscopedInclude = this.entityOptions.unscopedInclude,
-		additionalScopes = this.entityOptions.additionalScopes,
-		...args
-	}: {
-		where?: Record<string, any>;
-		include?: Include;
-		unscoped?: boolean;
-		unscopedInclude?: boolean;
-		additionalScopes?: string[];
-		[key: string]: any;
-	} = {}): Promise<number> {
-		return this.correctionService.unscopedHelper(this, unscoped, additionalScopes).count({
-			where,
-			include: this.correctionService.getCorrectInclude(
-				this,
-				unscopedInclude,
-				include,
-				where,
-				true,
-			),
-			distinct: true,
-			...args,
-		});
-	}
-
-	/**
-	 * Checking
-	 */
-	protected checkIncludeOptions(): void {
-		const include = <any>this.getIncludeOptions();
-		if (isEmpty(include.all)) {
-			include.forEach((child) =>
-				this.checkIncludeOptionsHelper(this.__crudModel__.prototype.constructor, child),
-			);
-		}
-	}
-
-	private checkIncludeOptionsHelper(parent, child) {
-		const childModel = child.model ?? child;
-		const associations = Object.entries(parent.associations).map(
-			([key, value]) => (value as any).target,
-		);
-
-		const associationWithSameTableName = associations.find(
-			(v) => v.getTableName() === childModel.getTableName(),
-		);
-		if (!associations.includes(childModel) && !associationWithSameTableName) {
-			throw new Error(
-				`Please check method getIncludeOptions() on model ${
-					this.entityName
-				}, link ${this.getEntityNameByModel(parent)} with ${this.getEntityNameByModel(
-					childModel,
-				)} doesn't exist`,
-			);
-		}
-
-		if (child.include) {
-			child.include.forEach((subChild) => this.checkIncludeOptionsHelper(childModel, subChild));
 		}
 	}
 }

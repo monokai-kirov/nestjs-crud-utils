@@ -1,2 +1,3 @@
-export * from './services/email.service';
+export * from './services';
+export * from './types';
 export * from './email.module';

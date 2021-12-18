@@ -1,8 +1,8 @@
 import { isNotEmpty } from 'class-validator';
-import { Sequelize } from 'sequelize-typescript';
-import { EntityService, Include } from './entity.service';
 import { Op } from 'sequelize';
-import { defaultScopeOptions } from '../../sequelize.options';
+import { Include } from '../types';
+import { defaultScopeOptions } from '../../utils/sequelize.options';
+import { EntityService } from './entity.service';
 
 export class CorrectionService<T> {
 	/**
@@ -13,71 +13,48 @@ export class CorrectionService<T> {
 		unscopedInclude: boolean,
 		include: Include,
 		where: Record<string, any>,
+		group?: any,
 		optimizeInclude = false,
 	): Include {
-		if (!include) {
-			return [];
-		}
-
 		const outerWhere = this.getSequelizeOuterWhere(context, where);
-		return unscopedInclude
+		const result = unscopedInclude
 			? this.addUnscopedAttributes(
 					context,
 					this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude),
 			  )
 			: this.addCorrectRequiredAttributes(context, include, outerWhere, optimizeInclude);
+
+		if (!group) {
+			return result;
+		}
+
+		/**
+		 * For grouping (prevent errors like '[column must appear in the GROUP BY clause or be used in an aggregate function]')
+		 */
+		const parent = context.__crudModel__.prototype.constructor;
+		return result['all'] === true
+			? context.getAllRelations().map((child) => this.addEmptyAttributes(parent, child))
+			: (result as any[]).map((child) => this.addEmptyAttributes(parent, child));
 	}
 
-	public addCorrectOrder(
+	public addCorrectOrderIfNecessary(
 		context: EntityService<T>,
 		order: any[] = [],
 		group: any,
-		include: Include,
-		unscoped: boolean,
-		withLeafs = true,
 	): any[] {
-		const parent = context.__crudModel__.prototype.constructor;
-		let result = [];
-
 		if (order.length || group) {
 			return order;
 		}
+
+		const parent = context.__crudModel__.prototype.constructor;
+		let result = [];
 
 		if (parent._scope?.order) {
 			result = [...parent._scope.order];
 		} else {
 			result = [...defaultScopeOptions.order];
 		}
-
-		if (include['all'] === true) {
-			context
-				.getAllAssociations()
-				.map((child) => this.addCorrectOrderHelper(parent, child, result, [], withLeafs));
-		} else {
-			(include as any[]).map((child) =>
-				this.addCorrectOrderHelper(parent, child, result, [], withLeafs),
-			);
-		}
 		return result;
-	}
-
-	/**
-	 * For grouping (prevent errors like '[column must appear in the GROUP BY clause or be used in an aggregate function]')
-	 */
-	public addEmptyAttributes(context: EntityService<T>, include: Include): Include {
-		const parent = context.__crudModel__.prototype.constructor;
-		return include['all'] === true
-			? context.getAllAssociations().map((child) => this.addEmptyAttributesHelper(parent, child))
-			: (include as any[]).map((child) => this.addEmptyAttributesHelper(parent, child));
-	}
-
-	/**
-	 * For admin crud (default unscoped: true)
-	 */
-	public addUnscopedAttributes(context: EntityService<T>, include: Include): Include {
-		return include['all'] === true
-			? context.getAllAssociations().map((child) => this.addUnscopedAttributesHelper(child))
-			: (include as any[]).map((child) => this.addUnscopedAttributesHelper(child));
 	}
 
 	/**
@@ -140,7 +117,29 @@ export class CorrectionService<T> {
 		return [...result];
 	}
 
-	public addCorrectRequiredAttributes(
+	protected addUnscopedAttributes(context: EntityService<T>, include: Include): Include {
+		return include['all'] === true
+			? context.getAllRelations().map((child) => this.addUnscopedAttributesHelper(child))
+			: (include as any[]).map((child) => this.addUnscopedAttributesHelper(child));
+	}
+
+	protected addUnscopedAttributesHelper(child: any): Record<string, any> {
+		if (!child.model) {
+			return {
+				model: child.unscoped(),
+			};
+		} else {
+			return {
+				...child,
+				model: child.model.unscoped(),
+				include: child.include
+					? child.include.map((subchild) => this.addUnscopedAttributesHelper(subchild))
+					: [],
+			};
+		}
+	}
+
+	protected addCorrectRequiredAttributes(
 		context: EntityService<T>,
 		include: Include,
 		outerWhere: string[],
@@ -149,7 +148,7 @@ export class CorrectionService<T> {
 		const parent = context.__crudModel__.prototype.constructor;
 		return include['all'] === true
 			? context
-					.getAllAssociations()
+					.getAllRelations()
 					.map((child) =>
 						this.addCorrectRequiredAttributesHelper(parent, child, outerWhere, [], optimizeInclude),
 					)
@@ -232,45 +231,7 @@ export class CorrectionService<T> {
 		}
 	}
 
-	protected addCorrectOrderHelper(
-		parent: any,
-		child: any,
-		order: any[],
-		levels: any[] = [],
-		withLeafs = true,
-	): void {
-		const childModel = child.model ?? child;
-		const [key, value] = Object.entries(parent.associations).find(
-			([key, value]: any) => value.target === childModel,
-		);
-
-		if (
-			value &&
-			value['target'] &&
-			value['target']['_scope'] &&
-			value['target']['_scope']['order']
-		) {
-			for (const chunk of value['target']['_scope']['order']) {
-				if (chunk[0] === 'createdAt' || chunk[0] === 'updatedAt') {
-					continue;
-				}
-
-				const levelChunks = [...levels, key];
-				// @see https://github.com/sequelize/sequelize/issues/6513
-				const literal = Sequelize.literal(`"${levelChunks.join('.')}.${chunk[0]}"`);
-				literal['model'] = childModel;
-				order.push(levelChunks.length ? [literal, chunk[1]] : chunk);
-			}
-		}
-
-		if (withLeafs && child.include) {
-			child.include.map((subchild) =>
-				this.addCorrectOrderHelper(childModel, subchild, order, [...levels, key], withLeafs),
-			);
-		}
-	}
-
-	protected addEmptyAttributesHelper(
+	protected addEmptyAttributes(
 		parent: Record<string, any>,
 		child: Record<string, any>,
 	): Record<string, any> {
@@ -304,44 +265,11 @@ export class CorrectionService<T> {
 				...child,
 				attributes: [],
 				include: child.include
-					? child.include.map((subchild) => this.addEmptyAttributesHelper(child.model, subchild))
+					? child.include.map((subchild) => this.addEmptyAttributes(child.model, subchild))
 					: [],
 				...props,
 			};
 		}
-	}
-
-	protected addUnscopedAttributesHelper(child: any): Record<string, any> {
-		if (!child.model) {
-			return {
-				model: child.unscoped(),
-			};
-		} else {
-			return {
-				...child,
-				model: child.model.unscoped(),
-				include: child.include
-					? child.include.map((subchild) => this.addUnscopedAttributesHelper(subchild))
-					: [],
-			};
-		}
-	}
-
-	public unscopedHelper(
-		context: EntityService<T>,
-		unscoped: boolean,
-		additionalScopes: string[] = [],
-		model = null,
-	) {
-		let usedModel = model ?? context.__crudModel__;
-		usedModel = unscoped ? usedModel.unscoped() : usedModel;
-
-		for (const additionalScope of additionalScopes) {
-			if (usedModel._scopeNames.includes(additionalScope)) {
-				usedModel = usedModel.scope(additionalScope);
-			}
-		}
-		return usedModel;
 	}
 }
 

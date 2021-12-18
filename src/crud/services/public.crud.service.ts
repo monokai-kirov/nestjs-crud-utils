@@ -1,6 +1,6 @@
+import { CrudOptions, Include } from '../types';
+import { CrudService } from './crud.service';
 import { UploadService } from '../../upload/services/upload.service';
-import { CrudOptions, CrudService } from './crud.service';
-import { Include } from './entity.service';
 
 export class PublicCrudService<T> extends CrudService<T> {
 	constructor(
@@ -15,7 +15,7 @@ export class PublicCrudService<T> extends CrudService<T> {
 		});
 	}
 
-	protected getIncludeOptions(): Include {
+	public getIncludeOptions(): Include {
 		return [];
 	}
 }

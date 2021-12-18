@@ -1,4 +1,19 @@
-# Requirements
+## v1.0.0 Notes
+
+```ts
+-- getIncludeOptions() was removed - please use getListInclude() and getDetailInclude() instead
+-- in @Finders@ methods default include now is [] (old value was getIncludeOptions())
+-- config.getAsyncDatabaseOptions() was renamed into config.getDatabaseOptionsWithLeaderChecking()
+-- config.getDatabaseOptions() was removed
+-- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
+-- uploadService.handlePicture() was removed
+-- width, height parameters in @UploadDecorator and @MultipleUploadDecorator were removed, please use resizeOptions instead
+-- UploadModel { url, filesize } -> values: [{ url, filesize, resizeOptions? }, { url, filesize, resizeOptions? }, ...],
+```
+
+# Install
+
+## Requirements
 
 ```ts
 --postgresql;
@@ -6,30 +21,49 @@
 --sequelize;
 ```
 
-# Install
-
-## PeerDependencies
+## PeerDependencies and pg
 
 ```bash
-npm install --save ioredis @nestjs/sequelize sequelize@~6.5.0 sequelize-typescript
+npm install @nestjs/sequelize sequelize sequelize-typescript ioredis pg
 ```
 
-## .env.example for docker environment
+## Postgresql database initialization
+
+```bash
+sudo nano /etc/postgresql/13/main/pg_hba.conf
+# "local" is for Unix domain socket connections only
+local   all   all   md5 # please change peer to md5
+sudo service postgresql restart;
+
+sudo -u postgres psql;
+CREATE USER someuser;
+\password someuser
+CREATE DATABASE somedb;
+GRANT ALL PRIVILEGES ON DATABASE somedb TO someuser;
+\c somedb
+CREATE extension IF NOT EXISTS "uuid-ossp";
+exit
+```
+
+## Redis
+
+```
+https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis-on-ubuntu-20-04
+```
+
+## .env
 
 ```
 NODE_ENV=production
 
-DB_HOST=db
+DB_HOST=localhost
 DB_PORT=5432
 DB_USERNAME=someuser
-DB_PASSWORD=blablabla
+DB_PASSWORD=somepassword
 DB_NAME=somedb
 
-REDIS_HOST=redis
+REDIS_HOST=localhost
 REDIS_PORT=6379
-
-WS_PORT=3030
-WS_ORIGIN=https://your_site.com:*
 ```
 
 ## main.ts
@@ -43,10 +77,21 @@ import 'src/app/config';
 
 ```ts
 import { config } from '@monokai-kirov/nestjs-crud-utils';
-// you can override here config's functions if you want
+// you can override or define here configuration functions if you want, default values in the end of the docs
+// for example: config.defineFunction('isTestEnvironment', () => process.env.NODE_ENV === 'test');
 ```
 
-# Crud example (please import UploadModule for this example)
+# Crud example
+
+```ts
+/**
+ * Note
+ */
+If you want to persist Upload files in a different storage (not a local hd; for example if you use kubernetes and AWS, Yandex Bucket etc.) please override UploadService and use overridden class in all CrudService instances as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
+
+Swagger setup:
+https://docs.nestjs.com/openapi/introduction
+```
 
 ## src/app/app.module.ts
 
@@ -59,7 +104,7 @@ import { AdminModule } from './admin/admin.module';
 @Module({
 	imports: [
 		SequelizeModule.forRootAsync({
-			useFactory: () => config.getDatabaseOptions() as any, // Define underscored: true (you can use your own options but underscored: true is necessary)
+			useFactory: () => config.getDatabaseOptionsWithLeaderChecking(), // Define underscored: true (you can use your own options but underscored: true is necessary + leader checking prevents multiple db schema syncronization from different app instances (if you're not using migrations in simple cases))
 		}),
 		UploadModule.register([SequelizeModule.forFeature([Upload])]), // By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
 		AdminModule,
@@ -68,23 +113,36 @@ import { AdminModule } from './admin/admin.module';
 export class AppModule {}
 ```
 
+## src/admin/admin.module.ts
+
+```ts
+import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { Category } from './models/category.model';
+import { CategoryService } from './services/category.service';
+import { CategoryController } from './controllers/category.controller';
+
+@Module({
+	imports: [SequelizeModule.forFeature([Category])],
+	controllers: [CategoryController],
+	providers: [CategoryService],
+})
+export class AdminModule {}
+```
+
 ## src/admin/models/category.model.ts
 
 ```ts
-import { Column, Model, Table, DataType /*BelongsToMany*/ } from 'sequelize-typescript';
+import { Column, Model, Table, DataType } from 'sequelize-typescript';
 import {
 	primaryKeyOptions,
 	Upload,
 	UploadForeignKeyDecorator,
-	UploadBelongsToDecorator /*ForeignKeyDecorator, BelongsToDecorator*/,
+	UploadBelongsToDecorator,
 } from '@monokai-kirov/nestjs-crud-utils';
-// import { Direction } from 'src/admin/models/direction.model';
 
 @Table({
-	indexes: [
-		{ fields: ['image_id'] },
-		// { fields: ['direction_id']},
-	],
+	indexes: [{ fields: ['image_id'] }],
 })
 export class Category extends Model {
 	@Column(primaryKeyOptions)
@@ -130,27 +188,25 @@ export class Category extends Model {
 ## src/admin/models/category.direction.model.ts
 
 ```ts
-// import { DateType, Model, Column, ForeignKey, Table } from "sequelize-typescript";
-// import { Category } from "src/admin/models/category.model";
-// import { Direction } from "src/admin/models/direction.model";
+/**
+import { DateType, Model, Column, ForeignKey, Table } from 'sequelize-typescript';
+import { Category } from 'src/admin/models/category.model';
+import { Direction } from 'src/admin/models/direction.model';
 
-// @Table({
-// indexes: [
-// { fields: ['category_id', 'direction_id']},
-// ],
-// })
-// export class CategoryDirection extends Model {
-// @ForeignKey(() => Category)
-// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
-// categoryId: string;
+@Table
+export class CategoryDirection extends Model {
+	@ForeignKey(() => Category)
+	@Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+	categoryId: string;
 
-// @ForeignKey(() => Direction)
-// @Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
-// directionId: string;
-// }
+	@ForeignKey(() => Direction)
+	@Column({ type: DataType.UUID, allowNull: false, onDelete: 'CASCADE' })
+	directionId: string;
+}
+*/
 ```
 
-## src/admin/models/category.dto.ts
+## src/admin/dto/category.dto.ts
 
 ```ts
 import {
@@ -158,9 +214,6 @@ import {
 	OptionalTextDecorator,
 	UploadDecorator,
 	UploadType,
-	UUIDDecorator,
-	ArrayOfUUIDsDecorator,
-	OptionalArrayOfUUIDsDecorator,
 } from '@monokai-kirov/nestjs-crud-utils';
 
 export class CategoryDto {
@@ -170,7 +223,8 @@ export class CategoryDto {
 	@OptionalTextDecorator()
 	description: string | null = null;
 
-	@UploadDecorator({ type: UploadType.PICTURE, width: 500 })
+	// @see https://sharp.pixelplumbing.com/api-resize
+	@UploadDecorator({ type: UploadType.PICTURE, resizeOptions: [{ width: 800 }, { width: 400 }] })
 	image: string | null = null;
 
 	/**
@@ -200,7 +254,7 @@ export class CategoryDto {
 ## src/admin/services/category.service.ts
 
 ```ts
-import { CrudService, Upload, UploadService } from '@monokai-kirov/nestjs-crud-utils';
+import { CrudService, UploadService } from '@monokai-kirov/nestjs-crud-utils';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { CategoryDto } from '../dto/category.dto';
@@ -221,12 +275,11 @@ export class CategoryService extends CrudService<Category> {
 ## src/admin/controllers/category.controller.ts
 
 ```ts
-import { Controller, UseGuards } from '@nestjs/common';
+import { CrudController } from '@monokai-kirov/nestjs-crud-utils';
+import { Controller } from '@nestjs/common';
 import { ApiExtraModels, ApiTags } from '@nestjs/swagger';
-import { ApiResponseDecorator } from '@monokai-kirov/nestjs-crud-utils';
 import { CategoryDto } from '../dto/category.dto';
 import { CategoryService } from '../services/category.service';
-import { CrudController } from '@monokai-kirov/nestjs-crud-utils';
 
 @ApiTags('Admin categories')
 @ApiExtraModels(CategoryDto)
@@ -241,49 +294,26 @@ export class CategoryController extends CrudController {
 }
 ```
 
-## src/admin/admin.module.ts
-
-```ts
-import { Category } from './models/category.model';
-import { CategoryService } from './services/category.service';
-import { CategoryController } from './controllers/category.controller';
-// import { Direction } from './models/direction.model';
-// import { CategoryDirection } from './models/category.direction.model';
-
-@Module({
-	imports: [
-		SequelizeModule.forFeature([
-			Category,
-			// Direction,
-			// CategoryDirection,
-		]),
-	],
-	controllers: [CategoryController],
-	providers: [CategoryService],
-})
-export class AdminModule {}
-```
-
 ## Constructor options
 
 ```ts
 /**
  * CrudService
- * public static DEFAULT_CRUD_OPTIONS: CrudOptions = {
+ * protected static DEFAULT_CRUD_OPTIONS: CrudOptions = {
  *	withDtoValidation: true,
  *	withRelationValidation: true,
  *	withUploadValidation: true,
  *	withTriggersCreation: true, // triggers for Upload removing (single|multiple no matter)
- *	withActiveUpdate: false, // use this for updating linked entities if parent entity activated|deactivated
+ *	withActiveUpdate: false, // use this for updating linked entities if parent entity was activated|deactivated
  *	unscoped: true,
  *	additionalScopes: [],
- *	childModels: [], // for automatically handling inheritance
+ *	childModels: [],
  * };
  */
 
 /**
  * EntityService
- * public static DEFAULT_ENTITY_OPTIONS: EntityOptions = {
+ * protected static DEFAULT_ENTITY_OPTIONS: EntityOptions = {
  *	unscoped: false,
  *	unscopedInclude: false,
  *	additionalScopes: [],
@@ -346,9 +376,10 @@ export class UserLanguageWithSkill extends Model {
 export class UserDto {
 	// email, phone, ...etc
 
+	// for application/json
 	@AdvancedObjectMultipleRelationDecorator({
-		// for application/json
-		// @AdvancedJSONMultipleRelationDecorator({ // for multipart/form-data
+		// for multipart/form-data
+		// @AdvancedJSONMultipleRelationDecorator({
 		schema: UserLanguageWithSkillDto,
 		unique: ['languageId'], // unique prop so that user can't use one language with different skills
 		minCount: 1, // is optional
@@ -375,221 +406,82 @@ public getChildModel(dto: Record<string, any>): Model {
 public getChildModelKey(): string | null {
 	return null;
 }
-// + you must declare childModels in constructor (for example if User has roles, childModels prop is: [Admin, Specialist, ...etc])
+// + you must declare childModels in constructor (for example if User has roles, childModels prop is: [Admin, Support, ...etc])
 // + declare in getDtoType() correct dtoType for class-validator (for example based on the role in dto)
 ```
 
-## @Override this if you want@
+## CrudService
 
 ```ts
-public getDtoType(dto: Record<string, any>): any {
-	return this.dtoType?.constructor !== Object ? this.dtoType : dto.constructor;
-} // for class-validator
+/**
+ * @Override this if you want@
+ */
+// Is used in getAll() in CrudController; default value - { all: true }
+protected getListInclude();
 
-protected getIncludeOptions(): Include {
-	return { all: true };
-} // is used in all @Finders@ by default (in CrudService { all: true } and in EntityService [])
+// Is used in getById(), create(), bulkCreate(), putById() in CrudController; default value - { all: true }
+protected getDetailInclude();
 
-protected getSearchingProps(): Array<
-	string | string[] | { property: string | string[]; transform: (value: any) => any }
-> {
-	return ['id', 'title'];
-} // for findWithPagination method
+// For getAll() method in CrudController; default value - ['id', 'title'],
+// for example: ?search=test will be using ILIKE condition with id and title properties
+protected getSearchingProps();
 
-public getConflictRelations(): string[] {
-	return Object.entries(this.__crudModel__.associations)
-		.filter(
-			([key, value]: any) =>
-				['HasOne', 'HasMany', 'BelongsToMany'].includes(value.associationType) &&
-				value.target.prototype.constructor !== Upload,
-		)
-		.map(([key, value]: any) => key);
-} // by default all links don't allow to delete the entity, you can override this behaviour
+// Don't allow to delete the entity - you can override this behaviour; default value - all links
+public getConflictRelations();
 
-protected async fillDto(
-	id: string | null,
-	dto: Record<string, any>,
-	req: Request,
-): Promise<Record<string, any>> {
-	return dto;
-} // if you want to add some new properties before saving
+// Default value - 30
+public getMaxEntitiesPerPage();
 
-public async findAfterCreateOrUpdate(id: string): Promise<T> {
-	return this.findOneById(id);
-}
-```
+// If you want to add some new properties before saving; default value - dto
+protected async fillDto();
 
-```ts
+/**
+ * Validations (by default all links are being validated automatically, override this functions if you intend to validate other cases)
+ */
+public async validateRequest(); // is being used in create and update methods
+public async validateCreateRequest();
+public async validateUpdateRequest();
+public async validateDeleteRequest();
+
 /**
  * Some helpers
  */
-public readonly correctionService: CorrectionService<T>; // by default used in @Finders@ for preventing some sequelize bugs
-// like include limitations and order with include + helper for recursively add attributes: [] for @sql group by query@
-public readonly validationService: ValidationService<T>; (validateAndParseJsonWithOneKey(), validateAndParseArrayOfJsonsWithOneKey(), validateAndParseArrayOfJsonsWithMultipleKeys() etc.)
-
-public get crudModel(): Model {
-	return this.correctionService.unscopedHelper(this, this.entityOptions.unscoped, this.entityOptions.additionalScopes)
-}
-public get tableName() : string { return this.__crudModel__.getTableName() };
-public get entityName() : string { return this.__crudModel__.prototype.constructor.name; }
-public getEntityNameByModel(model?) : string { return model ? model.prototype.constructor.name : this.entityName; }
-public getMaxEntitiesPerPage() : number { return 30; }
-
-getSingleRelations(model?: any): Array<{
-	name: string;
-	model: Model;
-}>;
-getMultipleRelations(model?: any): Array<{
-	name: string;
-	model: Model;
-}>;
-getUploadRelations(model?: any): string[];
-getAllAssociations(): any[];
+crudModel();
+tableName();
+entityName();
+getEntityNameByModel();
 ```
 
-## Validations
+## EntityService
 
 ```ts
 /**
- * Crud validations (by default all links are validated automatically, override this functions if you intend to validate other cases)
+ * Finders
  */
-public async validateRequest( // is used in create and update methods
-	id: string | null,
-	dto: Record<string, any>,
-	files: Files,
-	req: Request,
-): Promise<{ dto: Record<string, any>; files: Files }> {
-	return { dto, files };
-}
-
-public async validateCreateRequest(
-	dto: Record<string, any>,
-	files: Files,
-	req: Request,
-): Promise<{ dto; files }> {
-	return { dto, files };
-}
-
-public async validateUpdateRequest(
-	id: string,
-	dto: Record<string, any>,
-	files: Files,
-	req: Request,
-): Promise<{ dto: Record<string, any>; files: Files }> {
-	return { dto, files };
-}
-
-public async validateDeleteRequest(id: string, force?: boolean, req?: Request): Promise<void> {}
+findWithPagination(); // by default with optimizedInclude
+findOne();
+findOneById());
+findAll();
+findAllByIds();
+count(); // by default with optimizedInclude
 
 /**
- * Other validations (inherited from EntityService)
+ * Validations
  */
-validateDto(dtoType: any, dto: Record<string, any>, whitelist?: boolean): Promise<Record<string, any>>;
+validateDto();
+validateMandatoryId();
+validateOptionalId();
+validateMandatoryIds();
+validateOptionalIds();
 
-validateMandatoryId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
-	where?: {};
-	include?: any[];
-	model?: any;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-}): Promise<T>;
-
-validateOptionalId(id: string, { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
-	where?: {};
-	include?: any[];
-	model?: any;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-}): Promise<T | void>;
-
-validateMandatoryIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
-	where?: {};
-	include?: any[];
-	model?: any;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-}): Promise<void>;
-
-validateOptionalIds(ids: string[], { where, include, model, unscoped, unscopedInclude, additionalScopes, }?: {
-	where?: {};
-	include?: any[];
-	model?: any;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-}): Promise<void>;
-```
-
-## Finders
-
-```ts
-// by default with optimizedInclude in count method
-findWithPagination({ search, where, include, offset, limit, page, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	search?: string;
-	where?: Record<string, any>;
-	include?: Include;
-	offset?: number;
-	limit?: string | number;
-	page?: number;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<{
-		entities: T[];
-		totalCount: number;
-}>;
-
-findOne({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Record<string, any>;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T | null>;
-
-findOneById(id: string, { where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Record<string, any>;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T | null>;
-
-findAll({ where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Record<string, any>;
-	include?: Include;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T[]>;
-
-findAllByIds(ids: string[], { where, include, order, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Record<string, any>;
-	include?: Include;
-	order?: any[];
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<T[]>;
-
-count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?: {
-	where?: Record<string, any>;
-	include?: Include;
-	unscoped?: boolean;
-	unscopedInclude?: boolean;
-	additionalScopes?: string[];
-	[key: string]: any;
-}): Promise<number>;
+/**
+ * Other validations in entityService.validationService
+ */
+validatePage();
+validateAndParseOffsetAndLimit();
+validateAndParseJsonWithOneKey();
+validateAndParseArrayOfJsonsWithOneKey();
+validateAndParseArrayOfJsonsWithMultipleKeys();
 ```
 
 # Decorators list
@@ -604,10 +496,8 @@ count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?:
 
 @IntDecorator()
 @OptionalIntDecorator()
-@OptionalIntWithoutNullDecorator()
 @DecimalDecorator()
 @OptionalDecimalDecorator()
-@OptionalDecimalWithoutNullDecorator()
 
 @BooleanDecorator()
 @OptionalBooleanDecorator()
@@ -620,14 +510,16 @@ count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?:
 
 @UUIDDecorator()
 @OptionalUUIDDecorator()
-@JsonDecorator()
-@OptionalJsonDecorator()
-@ObjectDecorator()
-@OptionalObjectDecorator()
 @ArrayOfUUIDsDecorator()
 @OptionalArrayOfUUIDsDecorator()
+
+@JSONDecorator()
+@OptionalJSONDecorator()
 @ArrayOfJSONsDecorator()
 @OptionalArrayOfJSONsDecorator()
+
+@ObjectDecorator()
+@OptionalObjectDecorator()
 @ArrayOfObjectsDecorator()
 @OptionalArrayOfObjectsDecorator()
 
@@ -638,97 +530,27 @@ count({ where, include, unscoped, unscopedInclude, additionalScopes, ...args }?:
 
 @ForeignKeyDecorator()
 @BelongsToDecorator()
-@UploadForeignKeyDecorator()
-@UploadBelongsToDecorator()
-
-@UploadDecorator()
-@MultipleUploadDecorator()
 
 @AdvancedJSONMultipleRelationDecorator()
 @AdvancedObjectMultipleRelationDecorator()
 
+@UploadDecorator()
+@MultipleUploadDecorator()
+@UploadForeignKeyDecorator()
+@UploadBelongsToDecorator()
+
+@CacheDecorator()
+@RolesDecorator()
 @ApiJwtHeaderDecorator()
 @ApiResponseDecorator()
-@RolesDecorator()
-```
-
-## Leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks)
-
-```ts
-// package safe-redis-leader is used
-
-/**
- * Example
- */
-import { HttpService, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/sequelize';
-import { EntityService, config } from '@monokai-kirov/nestjs-crud-utils';
-import { Options, OptionsType } from '../models/options.model';
-import { Cron, CronExpression } from '@nestjs/schedule';
-
-@Injectable()
-export class OptionsService extends EntityService<Options> {
-	constructor(
-		@InjectModel(Options)
-		private model: typeof Options,
-		private readonly httpService: HttpService,
-	) {
-		super(model);
-	}
-
-	public async onApplicationBootstrap() {
-		await this.updateExchangeRate();
-	}
-
-	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-	public async updateExchangeRate() {
-		const isLeader = await config.isLeader(); // here
-		if (!isLeader) {
-			return;
-		}
-
-		let options = await this.findOne({
-			where: {
-				type: OptionsType.BASE,
-			},
-		});
-
-		try {
-			if (!options) {
-				options = new Options();
-				options.type = OptionsType.BASE;
-			}
-
-			options.values = {};
-			const USD = await this.fetchCurrency('USD');
-			if (USD) {
-				options.values['USD'] = USD;
-			}
-			const EUR = await this.fetchCurrency('EUR');
-			if (EUR) {
-				options.values['EUR'] = EUR;
-			}
-			await options.save();
-		} catch (e) {}
-	}
-
-	private async fetchCurrency(from: string, to = 'RUB', amount = 1) {
-		const host = 'https://api.frankfurter.app';
-		const response = await this.httpService
-			.get(`${host}/latest?from=${from}&to=${to}&amount=${amount}`)
-			.toPromise();
-		const value = response.data?.rates?.[to];
-		return value ?? null;
-	}
-}
 ```
 
 ## Guards
 
 ```ts
 GatewayThrottlerGuard; // just an example from the docs
-MutexGuard; // TODO: example
-WsMutexGuard; // TODO: example
+MutexGuard;
+WsMutexGuard;
 ```
 
 ## Pipes
@@ -760,25 +582,15 @@ app.useGlobalPipes(
 ## Interceptors
 
 ```ts
-ReleaseMutexInterceptor // TODO: example
-ReleaseWsMutexInterceptor // TODO: example
-TransactionInterceptor (description below)
-```
+ReleaseMutexInterceptor;
+ReleaseWsMutexInterceptor;
+TransactionInterceptor;
 
-## Filters
-
-```ts
-AllExceptionsFilter
-AllWsExceptionsFilter (fixes nestjs + class-validator 500 internal server error bug)
-```
-
-## Transactions and websocket gateway example
-
-```bash
+/**
+ * Setup for transactions support
+ */
 npm install cls-hooked
-```
 
-```ts
 // in main.ts
 import { createNamespace } from 'cls-hooked';
 import { Sequelize } from 'sequelize-typescript';
@@ -790,17 +602,180 @@ const { httpAdapter } = app.get(HttpAdapterHost);
 app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 ```
 
-```ts
-// Websocket gateway example (fix ws errors and catch postgresql 40001 thrown by SERIALIZABLE isolation level if TransactionInterceptor is used)
-import {
-	GatewayThrottlerGuard,
-	AllWsExceptionsFilter
-	config,
-} from '@monokai-kirov/nestjs-crud-utils';
-import { UseGuards, UsePipes, UseFilters, ValidationPipe } from '@nestjs/common';
+## Filters
 
-@UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-@UseFilters(AllWsExceptionsFilter)
-@WebSocketGateway(config.getWsPort(), config.getWsOptions())
-export class EventsGateway {}
+```ts
+AllExceptionsFilter
+AllWsExceptionsFilter (fix ws errors and catch postgresql 40001 thrown by SERIALIZABLE isolation level if TransactionInterceptor is used)
+```
+
+## Leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx)
+
+```ts
+// package safe-redis-leader is being used
+
+/**
+ * Example
+ */
+import { EntityService, config } from '@monokai-kirov/nestjs-crud-utils';
+import { HttpService, Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { Options, OptionsType } from '../models/options.model';
+
+@Injectable()
+export class OptionsService extends EntityService<Options> {
+	constructor(
+		@InjectModel(Options)
+		private model: typeof Options,
+		private readonly httpService: HttpService,
+	) {
+		super(model);
+	}
+
+	public async onApplicationBootstrap() {
+		await this.updateExchangeRate();
+	}
+
+	@Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+	public async updateExchangeRate() {
+		const isLeader = await config.isLeader(); // here
+		if (!isLeader) {
+			return;
+		}
+		// logic of updating
+	}
+}
+```
+
+## Config
+
+```ts
+/**
+ * Functions is being used in this package
+ */
+-- getDatabaseOptionsWithLeaderChecking(); // for pg-listen
+-- getRedisOptions(); // for safe-redis-leader and redis-semaphore
+-- getDefaultResizeOptions() // for UploadService
+-- getUploadOptions(); // for UploadService
+-- getEmailOptions(); // for EmailService
+
+/**
+ * List
+ */
+isDevelopment();
+isProduction();
+
+getDatabaseOptionsWithLeaderChecking() {
+	dialect: 'postgres',
+	host: process.env.DB_HOST,
+	port: parseInt(process.env.DB_PORT),
+	username: process.env.DB_USERNAME,
+	password: process.env.DB_PASSWORD,
+	database: process.env.DB_NAME,
+	define: {
+		underscored: true,
+	},
+	autoLoadModels: true,
+	...(isLeader
+		? {
+				synchronize: true,
+				sync: {
+					alter: true,
+				},
+			}
+		: {}),
+	pool: {
+		min: 10,
+		max: 100,
+	},
+	logging: false,
+};
+
+getRedisOptions() {
+	host: process.env.REDIS_HOST,
+	port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+};
+
+getDefaultResizeOptions() {
+	[
+		{
+			width: this.getUploadOptions().imageWidth,
+		},
+	];
+};
+
+public getUploadOptions() {
+	imageWidth: 1000,
+	folders: ['upload'],
+	ALLOWED_PICTURE_MIMETYPES: ['image/jpeg', 'image/png', 'image/svg+xml'],
+	ALLOWED_AUDIO_MIMETYPES: ['audio/mpeg', 'audio/ogg', 'audio/aac'],
+	ALLOWED_VIDEO_MIMETYPES: ['video/mpeg', 'video/ogg', 'video/mp4'],
+	ALLOWED_DOCUMENT_MIMETYPES: [
+		'text/plain',
+		'application/pdf',
+		'application/vnd.ms-excel',
+		'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+		'application/msword',
+		'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	],
+	SUMMARY_SIZE_LIMIT: 100_000_000, // 100 Mb
+}
+
+public getEmailOptions() {
+	host: 'smtp.yandex.ru',
+	port: 465,
+	secure: true,
+	auth: {
+		user: process.env.EMAIL_LOGIN,
+		pass: process.env.EMAIL_PASSWORD,
+	};
+}
+
+public getCorsOrigin() {
+	process.env.CORS_ORIGIN;
+}
+
+public getThrottlerOptions() {
+	ttl: 60,
+	limit: 20,
+	storage: new ThrottlerStorageRedisService(this.getRedisClient()),
+}
+
+public getCacheOptions() {
+	store: redisStore,
+	...this.getRedisOptions(),
+	ttl: 300,
+	max: 500,
+}
+
+public getWsPort() {
+	process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3030;
+}
+
+public getWsOptions() {
+	transports: ['websocket'],
+	origins: process.env.WS_ORIGIN ?? '*:*',
+	path: '/ws',
+	serveClient: false,
+	allowUpgrades: false,
+}
+
+public getSentryOptions() {
+	dsn: process.env.SENTRY_DSN,
+	tracesSampleRate: 1.0;
+}
+```
+
+## Other services in the package
+
+```ts
+EmailService and CryptoService
+```
+
+## TODO:
+
+```ts
+-- files handling in crudController.bulkCreate();
+-- write crudController.patchById(), handle class-validator { always: true } issues
 ```
