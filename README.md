@@ -2,22 +2,22 @@
 
 ```ts
 -- getIncludeOptions() was removed
-	- please use getListInclude() and getDetailInclude() instead
+- please use getListInclude() and getDetailInclude() instead
 -- in @Finders@ methods default include now is []
-	(old value was getIncludeOptions())
+(old value was getIncludeOptions())
 -- config.getAsyncDatabaseOptions() was renamed
-	intoconfig.getDatabaseOptionsWithLeaderChecking()
+intoconfig.getDatabaseOptionsWithLeaderChecking()
 -- config.getDatabaseOptions() was removed
 -- dependencies for uploadService.handleVideo()
-	and this method were removed (mac issues)
+and this method were removed (mac issues)
 -- uploadService.handlePicture() was removed
 -- width, height parameters in @UploadDecorator and @MultipleUploadDecorator
-	were removed, please use resizeOptions instead
+were removed, please use resizeOptions instead
 -- UploadModel { url, filesize } -> values: [
-	{ url, filesize, resizeOptions? },
-	{ url, filesize, resizeOptions? },
-	...
-	],
+{ url, filesize, resizeOptions? },
+{ url, filesize, resizeOptions? },
+...
+],
 ```
 
 # Install
