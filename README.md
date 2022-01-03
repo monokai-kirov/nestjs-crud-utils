@@ -438,14 +438,14 @@ public getChildModelKey(): string | null {
  * @Override this if you want@
  */
 // Is used in getAll() in CrudController; default value - { all: true }
-protected getListInclude();
+public getListInclude();
 
 // Is used in getById(), create(), bulkCreate(), putById() in CrudController; default value - { all: true }
-protected getDetailInclude();
+public getDetailInclude();
 
 // For getAll() method in CrudController; default value - ['id', 'title'],
 // for example: ?search=test will be using ILIKE condition with id and title properties
-protected getSearchingProps();
+public getSearchingProps();
 
 // Don't allow to delete the entity - you can override this behaviour; default value - all links
 public getConflictRelations();

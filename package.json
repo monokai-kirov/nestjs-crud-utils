@@ -1,7 +1,7 @@
 {
 	"name": "@monokai-kirov/nestjs-crud-utils",
 	"author": "Monokai Kirov",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Nestjs sequelize crud, nestjs crud utils",
 	"keywords": [
 		"sequelize crud",
