@@ -1,14 +1,23 @@
 ## v1.0.0 Notes
 
 ```ts
--- getIncludeOptions() was removed - please use getListInclude() and getDetailInclude() instead
--- in @Finders@ methods default include now is [] (old value was getIncludeOptions())
--- config.getAsyncDatabaseOptions() was renamed into config.getDatabaseOptionsWithLeaderChecking()
+-- getIncludeOptions() was removed
+	- please use getListInclude() and getDetailInclude() instead
+-- in @Finders@ methods default include now is []
+	(old value was getIncludeOptions())
+-- config.getAsyncDatabaseOptions() was renamed
+	intoconfig.getDatabaseOptionsWithLeaderChecking()
 -- config.getDatabaseOptions() was removed
--- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
+-- dependencies for uploadService.handleVideo()
+	and this method were removed (mac issues)
 -- uploadService.handlePicture() was removed
--- width, height parameters in @UploadDecorator and @MultipleUploadDecorator were removed, please use resizeOptions instead
--- UploadModel { url, filesize } -> values: [{ url, filesize, resizeOptions? }, { url, filesize, resizeOptions? }, ...],
+-- width, height parameters in @UploadDecorator and @MultipleUploadDecorator
+	were removed, please use resizeOptions instead
+-- UploadModel { url, filesize } -> values: [
+	{ url, filesize, resizeOptions? },
+	{ url, filesize, resizeOptions? },
+	...
+	],
 ```
 
 # Install
@@ -77,8 +86,12 @@ import 'src/app/config';
 
 ```ts
 import { config } from '@monokai-kirov/nestjs-crud-utils';
-// you can override or define here configuration functions if you want, default values in the end of the docs
-// for example: config.defineFunction('isTestEnvironment', () => process.env.NODE_ENV === 'test');
+// you can override or define here configuration functions if you want,
+// default values in the end of the docs
+// for example: config.defineFunction(
+// 'isTestEnvironment',
+// () => process.env.NODE_ENV === 'test'
+// );
 ```
 
 # Crud example
@@ -87,7 +100,10 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 /**
  * Note
  */
-If you want to persist Upload files in a different storage (not a local hd; for example if you use kubernetes and AWS, Yandex Bucket etc.) please override UploadService and use overridden class in all CrudService instances as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
+If you want to persist Upload files in a different storage (not a local hd;
+for example if you use kubernetes and AWS, Yandex Bucket etc.)
+please override UploadService and use overridden class in all CrudService instances
+as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
 
 Swagger setup:
 https://docs.nestjs.com/openapi/introduction
@@ -104,9 +120,14 @@ import { AdminModule } from './admin/admin.module';
 @Module({
 	imports: [
 		SequelizeModule.forRootAsync({
-			useFactory: () => config.getDatabaseOptionsWithLeaderChecking(), // Define underscored: true (you can use your own options but underscored: true is necessary + leader checking prevents multiple db schema syncronization from different app instances (if you're not using migrations in simple cases))
+			// Define underscored: true (you can use your own options but underscored: true
+			// is necessary + leader checking prevents multiple db schema syncronization from
+			// different app instances (if you're not using migrations in simple cases))
+			useFactory: () => config.getDatabaseOptionsWithLeaderChecking(),
 		}),
-		UploadModule.register([SequelizeModule.forFeature([Upload])]), // By default after onApplicationBootstrap hook postgresql triggers (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+		// By default after onApplicationBootstrap hook postgresql triggers
+		// (AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+		UploadModule.register([SequelizeModule.forFeature([Upload])]),
 		AdminModule,
 	],
 })
@@ -436,7 +457,8 @@ public getMaxEntitiesPerPage();
 protected async fillDto();
 
 /**
- * Validations (by default all links are being validated automatically, override this functions if you intend to validate other cases)
+ * Validations (by default all links are being validated automatically,
+ * override this functions if you intend to validate other cases)
  */
 public async validateRequest(); // is being used in create and update methods
 public async validateCreateRequest();
