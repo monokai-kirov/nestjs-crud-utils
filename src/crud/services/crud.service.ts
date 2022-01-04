@@ -187,7 +187,9 @@ export class CrudService<T> extends EntityService<T> {
 	public async bulkCreate(chunks: Record<string, any>[], req: Request): Promise<T[]> {
 		const entities = [];
 		for (const chunk of chunks) {
-			entities.push(await this.updateHelper(this.__crudModel__.build(), chunk.dto, {}, req));
+			entities.push(
+				await this.updateHelper(this.__crudModel__.build(), chunk.dto, chunk.files, req),
+			);
 		}
 		return entities;
 	}
@@ -215,6 +217,17 @@ export class CrudService<T> extends EntityService<T> {
 
 	public transformDto(dto: Record<string, any>): any {
 		return this.getDtoType(dto) ? plainToClass(this.getDtoType(dto), dto) : dto;
+	}
+
+	public getIndividualFiles(dto: Record<string, any>, files: Files, index: number): Files {
+		const uploadProps = this.getUploads(dto).map((v) => v.name);
+
+		return files
+			.filter((v) => uploadProps.map((v) => `${v}[${index}]`).includes(v.fieldname))
+			.map((v) => ({
+				...v,
+				fieldname: v.fieldname.split('[')[0],
+			}));
 	}
 
 	protected getMetadataHelper(key: string, dto?) {

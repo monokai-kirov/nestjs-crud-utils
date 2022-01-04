@@ -26,9 +26,15 @@ export class CrudValidationService<T> {
 		dto = await context.validateDto(BulkCreateUpdateDto, dto);
 		const chunks = [];
 
-		for (let chunk of dto.bulk) {
-			chunk = await this.validateHelper(context, null, chunk, files, req);
-			chunks.push(chunk);
+		for (const [index, chunk] of dto.bulk.entries()) {
+			const parsedChunk = await this.validateHelper(
+				context,
+				null,
+				chunk,
+				context.getIndividualFiles(dto, files, index),
+				req,
+			);
+			chunks.push(parsedChunk);
 		}
 		return chunks;
 	}

@@ -36,45 +36,6 @@ were removed, please use resizeOptions instead
 npm install @nestjs/sequelize sequelize sequelize-typescript ioredis pg
 ```
 
-## Postgresql database initialization
-
-```bash
-sudo nano /etc/postgresql/13/main/pg_hba.conf
-# "local" is for Unix domain socket connections only
-local   all   all   md5 # please change peer to md5
-sudo service postgresql restart;
-
-sudo -u postgres psql;
-CREATE USER someuser;
-\password someuser
-CREATE DATABASE somedb;
-GRANT ALL PRIVILEGES ON DATABASE somedb TO someuser;
-\c somedb
-CREATE extension IF NOT EXISTS "uuid-ossp";
-exit
-```
-
-## Redis
-
-```
-https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis-on-ubuntu-20-04
-```
-
-## .env
-
-```
-NODE_ENV=production
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=someuser
-DB_PASSWORD=somepassword
-DB_NAME=somedb
-
-REDIS_HOST=localhost
-REDIS_PORT=6379
-```
-
 ## main.ts
 
 ```ts
@@ -87,7 +48,7 @@ import 'src/app/config';
 ```ts
 import { config } from '@monokai-kirov/nestjs-crud-utils';
 // you can override or define here configuration functions if you want,
-// default values in the end of the docs
+// default values at the end of the docs
 // for example: config.defineFunction(
 // 'isTestEnvironment',
 // () => process.env.NODE_ENV === 'test'
@@ -104,6 +65,52 @@ If you want to persist Upload files in a different storage (not a local hd;
 for example if you use kubernetes and AWS, Yandex Bucket etc.)
 please override UploadService and use overridden class in all CrudService instances
 as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
+
+Updating files note:
+if you want to persist a previous file - specify the uuid,
+if you want to remove the file - don't specify the uuid
+if you want to remove the file and load new - specify a blob in your multipart/form-data content
+
+Example of multipart/form-data content for bulk/create with files:
+bulk[0][title]
+bulk[0][description]
+bulk[0][direction]
+image[0]
+
+Postgresql database initialization:
+sudo nano /etc/postgresql/13/main/pg_hba.conf
+# "local" is for Unix domain socket connections only
+local   all   all   md5 # please change peer to md5
+sudo service postgresql restart;
+sudo -u postgres psql;
+CREATE USER someuser;
+\password someuser
+CREATE DATABASE somedb;
+GRANT ALL PRIVILEGES ON DATABASE somedb TO someuser;
+\c somedb
+CREATE extension IF NOT EXISTS "uuid-ossp";
+exit
+
+Redis:
+https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis-on-ubuntu-20-04
+
+.env:
+NODE_ENV=development
+
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=someuser
+DB_PASSWORD=somepassword
+DB_NAME=somedb
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+Security:
+helmet: https://helmetjs.github.io/
+rate-limiting: https://docs.nestjs.com/security/rate-limiting
+csrf: https://docs.nestjs.com/security/csrf
+content-security-policy: https://content-security-policy.com/
 
 Swagger setup:
 https://docs.nestjs.com/openapi/introduction
@@ -458,7 +465,7 @@ protected async fillDto();
 
 /**
  * Validations (by default all links are being validated automatically,
- * override this functions if you intend to validate other cases)
+ * override these functions if you intend to validate other cases)
  */
 public async validateRequest(); // is being used in create and update methods
 public async validateCreateRequest();
@@ -798,6 +805,5 @@ EmailService and CryptoService
 ## TODO:
 
 ```ts
--- files handling in crudController.bulkCreate();
--- write crudController.patchById(), handle class-validator { always: true } issues
+-- write crudController.patchById(), handle class-validator { always: true }
 ```

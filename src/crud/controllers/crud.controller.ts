@@ -87,16 +87,17 @@ export class CrudController {
 		};
 	}
 
-	// TODO: files handling
+	@ApiConsumes('multipart/form-data')
 	@ApiResponseDecorator([400, 201])
 	@UseInterceptors(AnyFilesInterceptor())
 	@Post('bulk/create')
 	async bulkCreate(
 		@Body() dto: BulkCreateUpdateDto,
+		@UploadedFiles() files = {},
 		@Req() req: Request,
 		...rest: any[]
 	): Promise<CrudResponse> {
-		const chunks = await this.service.validateBeforeBulkCreating(dto, {}, req);
+		const chunks = await this.service.validateBeforeBulkCreating(dto, files, req);
 		const entities = await this.service.bulkCreate(chunks, req);
 		return {
 			statusCode: 201,
