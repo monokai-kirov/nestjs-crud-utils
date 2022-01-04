@@ -67,9 +67,10 @@ please override UploadService and use overridden class in all CrudService instan
 as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
 
 Updating files note:
-if you want to persist a previous file - specify the uuid,
-if you want to remove the file - don't specify the uuid
-if you want to remove the file and load new - specify a blob in your multipart/form-data content
+if you want to:
+-- persist a previous file - specify the uuid;
+-- remove the file - don't specify the uuid;
+-- remove the file and load new - specify a blob in your multipart/form-data content;
 
 Example of multipart/form-data content for bulk/create with files:
 bulk[0][title]
