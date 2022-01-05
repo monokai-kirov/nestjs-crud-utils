@@ -98,6 +98,9 @@ https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/
 https://nginx.org/en/docs/http/load_balancing.html
 https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04
 
+docker-compose scale:
+https://brianchristner.io/how-to-scale-a-docker-container-with-docker-compose/
+
 .env:
 NODE_ENV=development
 
