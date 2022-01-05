@@ -54,7 +54,7 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 
 ```ts
 /**
- * Note
+ * Notes
  */
 If you want to persist Upload files in a different storage (not a local hd;
 for example if you use kubernetes and AWS, Yandex Bucket etc.)
@@ -95,7 +95,7 @@ https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis
 
 nginx:
 https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/
-https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/
+https://nginx.org/en/docs/http/load_balancing.html
 https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04
 
 .env:
