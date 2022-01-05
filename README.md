@@ -11,12 +11,12 @@ were removed, please use resizeOptions instead
 -- UploadModel { url, filesize } -> values: [
 	{ url, filesize, resizeOptions? },
 { url, filesize, resizeOptions? },
+...
+],
 
 -- dependencies for uploadService.handleVideo()
 and this method were removed (mac issues)
 -- uploadService.handlePicture() was removed
-...
-],
 ```
 
 # Install
