@@ -1,21 +1,17 @@
 ## v1.0.0 Notes
 
 ```ts
--- getIncludeOptions() was removed
-- please use getListInclude() and getDetailInclude() instead
--- in @Finders@ methods default include now is []
-(old value was getIncludeOptions())
+-- getIncludeOptions() was removed - please use getListInclude() and getDetailInclude() instead
+-- in @Finders@ methods default include now is [] (old value was getIncludeOptions())
 
--- width, height parameters in @UploadDecorator and @MultipleUploadDecorator
-were removed, please use resizeOptions instead
+-- width, height parameters in @UploadDecorator and @MultipleUploadDecorator were removed, please use resizeOptions instead
 -- UploadModel { url, filesize } -> values: [
 	{ url, filesize, resizeOptions? },
-{ url, filesize, resizeOptions? },
-...
+	{ url, filesize, resizeOptions? },
+	...
 ],
 
--- dependencies for uploadService.handleVideo()
-and this method were removed (mac issues)
+-- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
 -- uploadService.handlePicture() was removed
 ```
 
@@ -77,7 +73,7 @@ bulk[0][description]
 bulk[0][direction]
 image[0]
 
-Postgresql database initialization:
+Postgresql:
 sudo nano /etc/postgresql/13/main/pg_hba.conf
 # "local" is for Unix domain socket connections only
 local   all   all   md5 # please change peer to md5
@@ -91,8 +87,16 @@ GRANT ALL PRIVILEGES ON DATABASE somedb TO someuser;
 CREATE extension IF NOT EXISTS "uuid-ossp";
 exit
 
+pgtune:
+https://pgtune.leopard.in.ua/
+
 Redis:
 https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis-on-ubuntu-20-04
+
+nginx:
+https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/
+https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/
+https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-20-04
 
 .env:
 NODE_ENV=development
@@ -111,6 +115,8 @@ helmet: https://helmetjs.github.io/
 rate-limiting: https://docs.nestjs.com/security/rate-limiting
 csrf: https://docs.nestjs.com/security/csrf
 content-security-policy: https://content-security-policy.com/
+ufw: https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu-20-04
+snort: https://linoxide.com/install-snort-on-ubuntu/
 
 Swagger setup:
 https://docs.nestjs.com/openapi/introduction
