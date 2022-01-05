@@ -120,7 +120,7 @@ export class CrudService<T> extends EntityService<T> {
 	}
 
 	/**
-	 * You can override this functions if you intend to handle custom cases of validation
+	 * You can override these functions if you intend to handle custom cases of validation
 	 */
 	public async validateRequest(
 		id: string | null,

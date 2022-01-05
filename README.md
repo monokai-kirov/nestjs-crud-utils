@@ -5,17 +5,16 @@
 - please use getListInclude() and getDetailInclude() instead
 -- in @Finders@ methods default include now is []
 (old value was getIncludeOptions())
--- config.getAsyncDatabaseOptions() was renamed
-intoconfig.getDatabaseOptionsWithLeaderChecking()
--- config.getDatabaseOptions() was removed
--- dependencies for uploadService.handleVideo()
-and this method were removed (mac issues)
--- uploadService.handlePicture() was removed
+
 -- width, height parameters in @UploadDecorator and @MultipleUploadDecorator
 were removed, please use resizeOptions instead
 -- UploadModel { url, filesize } -> values: [
+	{ url, filesize, resizeOptions? },
 { url, filesize, resizeOptions? },
-{ url, filesize, resizeOptions? },
+
+-- dependencies for uploadService.handleVideo()
+and this method were removed (mac issues)
+-- uploadService.handlePicture() was removed
 ...
 ],
 ```
@@ -33,7 +32,7 @@ were removed, please use resizeOptions instead
 ## PeerDependencies and pg
 
 ```bash
-npm install @nestjs/sequelize sequelize sequelize-typescript ioredis pg
+npm install @nestjs/sequelize sequelize@6 sequelize-typescript ioredis pg
 ```
 
 ## main.ts
