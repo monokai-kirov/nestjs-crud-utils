@@ -160,14 +160,6 @@ export class CrudService<T> extends EntityService<T> {
 		return this.crudValidationService.validateBeforeCreating(this, dto, files, req);
 	}
 
-	public async validateBeforeBulkCreating(
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<ValidateResult[]> {
-		return this.crudValidationService.validateBeforeBulkCreating(this, dto, files, req);
-	}
-
 	public async validateBeforePutting(
 		id: string,
 		dto: Record<string, any>,
@@ -175,6 +167,18 @@ export class CrudService<T> extends EntityService<T> {
 		req: Request,
 	): Promise<ValidateResult> {
 		return this.crudValidationService.validateBeforePutting(this, id, dto, files, req);
+	}
+
+	public async validateBeforeRemoving(id: string, force?: boolean, req?: Request): Promise<void> {
+		return this.crudValidationService.validateBeforeRemoving(this, id, force, req);
+	}
+
+	public async validateBeforeBulkCreating(
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult[]> {
+		return this.crudValidationService.validateBeforeBulkCreating(this, dto, files, req);
 	}
 
 	public async validateBeforeBulkPutting(
@@ -185,12 +189,21 @@ export class CrudService<T> extends EntityService<T> {
 		return this.crudValidationService.validateBeforeBulkPutting(this, dto, files, req);
 	}
 
-	public async validateBeforeRemoving(id: string, force?: boolean, req?: Request): Promise<void> {
-		return this.crudValidationService.validateBeforeRemoving(this, id, force, req);
-	}
-
 	public async create(dto: Record<string, any>, files: Files, req: Request): Promise<T> {
 		return this.updateHelper(this.__crudModel__.build(), dto, files, req);
+	}
+
+	public async putById(
+		id: string,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<T> {
+		return this.updateHelper(await this.findOneById(id), dto, files, req);
+	}
+
+	public async removeById(id: string): Promise<void> {
+		await this.__crudModel__.destroy({ where: { id } } as any);
 	}
 
 	public async bulkCreate(chunks: ValidateResult[], req: Request): Promise<T[]> {
@@ -203,15 +216,6 @@ export class CrudService<T> extends EntityService<T> {
 		return entities;
 	}
 
-	public async putById(
-		id: string,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<T> {
-		return this.updateHelper(await this.findOneById(id), dto, files, req);
-	}
-
 	public async bulkPut(chunks: ValidateResult[], req: Request): Promise<T[]> {
 		const entities = await this.findAllByIds(chunks.map((v) => v.dto.id));
 		const result = [];
@@ -222,10 +226,6 @@ export class CrudService<T> extends EntityService<T> {
 			result.push(await this.updateHelper(entity, propsWithoutId, chunk.files, req));
 		}
 		return result;
-	}
-
-	public async removeById(id: string): Promise<void> {
-		await this.__crudModel__.destroy({ where: { id } } as any);
 	}
 
 	public getUploads(dto?: Record<string, any>): Array<UploadParam> {

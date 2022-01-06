@@ -17,15 +17,6 @@ export class CrudValidationService<T> {
 		return this.validateSingle(context, null, dto, files, req);
 	}
 
-	public async validateBeforeBulkCreating(
-		context: CrudService<T>,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<ValidateResult[]> {
-		return this.validateMultiple(context, dto, files, req);
-	}
-
 	public async validateBeforePutting(
 		context: CrudService<T>,
 		id: string,
@@ -35,15 +26,6 @@ export class CrudValidationService<T> {
 	): Promise<ValidateResult> {
 		await context.validateMandatoryId(id);
 		return this.validateSingle(context, id, dto, files, req);
-	}
-
-	public async validateBeforeBulkPutting(
-		context: CrudService<T>,
-		dto: Record<string, any>,
-		files: Files,
-		req: Request,
-	): Promise<ValidateResult[]> {
-		return this.validateMultiple(context, dto, files, req, true);
 	}
 
 	public async validateBeforeRemoving(
@@ -57,6 +39,24 @@ export class CrudValidationService<T> {
 			await this.validateConflictRelations(context, id);
 		}
 		await context.validateDeleteRequest(id, force, req);
+	}
+
+	public async validateBeforeBulkCreating(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult[]> {
+		return this.validateMultiple(context, dto, files, req);
+	}
+
+	public async validateBeforeBulkPutting(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult[]> {
+		return this.validateMultiple(context, dto, files, req, true);
 	}
 
 	public async validateRelations(context: CrudService<T>, dto: Record<string, any>): Promise<void> {
