@@ -251,6 +251,14 @@ export class CrudService<T> extends EntityService<T> {
 			}));
 	}
 
+	public checkInclude(include: Include, method: 'detail' | 'list'): void {
+		if (isEmpty((include as Record<string, any>)?.all)) {
+			(include as Record<string, any>[]).forEach((child) =>
+				this.checkIncludeHelper(this.__crudModel__.prototype.constructor, child, method),
+			);
+		}
+	}
+
 	protected getMetadataHelper(key: string, dto?) {
 		if (!this.getDtoType(dto)?.prototype) {
 			return [];
@@ -620,14 +628,6 @@ export class CrudService<T> extends EntityService<T> {
 		}
 
 		return isLinked;
-	}
-
-	protected checkInclude(include: Include, method: string): void {
-		if (isEmpty((include as Record<string, any>)?.all)) {
-			(include as Record<string, any>[]).forEach((child) =>
-				this.checkIncludeHelper(this.__crudModel__.prototype.constructor, child, method),
-			);
-		}
 	}
 
 	protected checkIncludeHelper(parent: any, child: any, method: string): void {

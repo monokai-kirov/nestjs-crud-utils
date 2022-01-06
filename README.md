@@ -73,6 +73,10 @@ bulk[0][description]
 bulk[0][direction]
 image[0]
 
+crudController.getAll():
+?search=test
+and https://www.npmjs.com/package/sequelize-query
+
 Postgresql:
 sudo nano /etc/postgresql/13/main/pg_hba.conf
 # "local" is for Unix domain socket connections only

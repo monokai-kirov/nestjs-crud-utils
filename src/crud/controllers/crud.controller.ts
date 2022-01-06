@@ -1,4 +1,5 @@
 import {
+	BadRequestException,
 	Body,
 	Delete,
 	Get,
@@ -20,6 +21,9 @@ import { BulkDeleteDto } from '../dto/bulk.delete.dto';
 import { CrudService } from '../services/crud.service';
 import { Request } from 'express';
 import { CrudResponse } from '../types';
+import { Op } from 'sequelize';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const queryParser = require('../services/query.parser');
 
 // TODO: patchById(), patchByIds() (handle class-validator { always: true })
 export class CrudController {
@@ -110,8 +114,21 @@ export class CrudController {
 		@Query('offset') offset: number,
 		@Query('limit') limit?: string | number,
 		@Query('search') search?: string,
+		@Req() req?: Request,
 		...rest: any[]
 	): Promise<CrudResponse> {
+		const query = await queryParser(Op, this.service.__crudModel__.sequelize.models).parse(req);
+		if (query.include) {
+			if (!Array.isArray(query.include)) {
+				query.include = [query.include];
+			}
+			try {
+				this.service.checkInclude(query.include, 'list');
+			} catch (e) {
+				throw new BadRequestException('Incorrect include query');
+			}
+		}
+
 		return {
 			statusCode: 200,
 			...(await this.service.findWithPagination({
@@ -120,6 +137,7 @@ export class CrudController {
 				offset,
 				limit,
 				include: this.service.getListInclude(),
+				...query,
 			})),
 		};
 	}

@@ -72,7 +72,7 @@ export class EntityService<T> {
 		additionalScopes?: string[];
 		[key: string]: any;
 	} = {}): Promise<{ entities: T[]; totalCount: number }> {
-		const findOptions = {
+		const findOptions: Record<string, any> = {
 			where,
 			include,
 			unscoped,
@@ -85,7 +85,8 @@ export class EntityService<T> {
 			this.addSearchToFindOptions(search, findOptions, searchingProps);
 		}
 
-		const totalCount = await this.count(findOptions);
+		const { attributes, ...countOptions } = findOptions;
+		const totalCount = await this.count(countOptions);
 
 		let transformedOffset, transformedLimit;
 		if (page) {
@@ -101,6 +102,9 @@ export class EntityService<T> {
 		return {
 			entities: await this.findAll({
 				...findOptions,
+				...(findOptions.attributes?.length
+					? { attributes: [...findOptions.attributes, 'created_at', 'updated_at'] }
+					: {}),
 				...(transformedOffset !== 0 ? { offset: transformedOffset } : {}),
 				limit: transformedLimit,
 				order,
