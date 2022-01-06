@@ -112,7 +112,7 @@ export class CrudController {
 	@ApiResponseDecorator([400, { code: 200, description: 'entity: Entity' }])
 	@UseInterceptors(AnyFilesInterceptor())
 	@Put(':id')
-	async putById(
+	async bulkPut(
 		@Param('id') id: string,
 		@Body() dto: Record<string, any>,
 		@UploadedFiles() files = {},

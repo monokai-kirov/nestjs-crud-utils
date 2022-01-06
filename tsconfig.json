@@ -10,7 +10,13 @@
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
 		"incremental": true,
-		"baseUrl": "./"
+		"baseUrl": "./",
+		"paths": {
+			"@nestjs/sequelize": ["../test/node_modules/@nestjs/sequelize"],
+			"ioredis": ["../test/node_modules/ioredis"],
+			"sequelize": ["../test/node_modules/sequelize"],
+			"sequelize-typescript": ["../test/node_modules/sequelize-typescript"]
+		}
 	},
 	"include": ["src/**/*"]
 }
