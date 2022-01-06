@@ -10,9 +10,7 @@
 	{ url, filesize, resizeOptions? },
 	...
 ],
-
 -- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
--- uploadService.handlePicture() was removed
 ```
 
 # Install
@@ -75,7 +73,7 @@ image[0]
 
 crudController.getAll():
 ?search=test
-and https://www.npmjs.com/package/sequelize-query
+and other query params support from https://www.npmjs.com/package/sequelize-query
 
 Postgresql:
 sudo nano /etc/postgresql/13/main/pg_hba.conf
@@ -818,5 +816,5 @@ EmailService and CryptoService
 ## TODO:
 
 ```ts
--- patchById(), patchByIds() (handle class-validator { always: true })
+-- patchById(), bulkPatch() (handle class-validator { always: true })
 ```

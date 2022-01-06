@@ -25,7 +25,7 @@ import { Op } from 'sequelize';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const queryParser = require('../services/query.parser');
 
-// TODO: patchById(), patchByIds() (handle class-validator { always: true })
+// TODO: patchById(), bulkPatch() (handle class-validator { always: true })
 export class CrudController {
 	protected readonly service: CrudService<any>;
 
