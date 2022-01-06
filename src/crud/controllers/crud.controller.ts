@@ -33,9 +33,7 @@ export class CrudController {
 		{ name: 'limit', required: false },
 		{ name: 'search', required: false },
 	])
-	@ApiResponseDecorator([
-		{ code: 200, description: 'entities: ${Entity[]}, totalCount: ${totalCount}' },
-	])
+	@ApiResponseDecorator([{ code: 200, description: 'entities: Entity[], totalCount: number' }])
 	@Get()
 	async getAll(
 		@Query('offset') offset: number,
@@ -55,7 +53,7 @@ export class CrudController {
 		};
 	}
 
-	@ApiResponseDecorator([400, { code: 200, description: 'entity: ${Entity}' }])
+	@ApiResponseDecorator([400, { code: 200, description: 'entity: Entity' }])
 	@Get(':id')
 	async getById(@Param('id') id: string, ...rest: any[]): Promise<CrudResponse> {
 		return {
@@ -67,7 +65,7 @@ export class CrudController {
 	}
 
 	@ApiConsumes('multipart/form-data')
-	@ApiResponseDecorator([400, { code: 201, description: 'entity: ${Entity[]}' }])
+	@ApiResponseDecorator([400, { code: 201, description: 'entity: Entity' }])
 	@UseInterceptors(AnyFilesInterceptor())
 	@Post()
 	async create(
@@ -88,7 +86,7 @@ export class CrudController {
 	}
 
 	@ApiConsumes('multipart/form-data')
-	@ApiResponseDecorator([400, 201])
+	@ApiResponseDecorator([400, { code: 201, description: 'entities: Entity[]' }])
 	@UseInterceptors(AnyFilesInterceptor())
 	@Post('bulk/create')
 	async bulkCreate(
@@ -108,10 +106,10 @@ export class CrudController {
 		};
 	}
 
-	// TODO: patchById(), handle class-validator { always: true } issues
+	// TODO: patchById(), patchByIds() (handle class-validator { always: true })
 
 	@ApiConsumes('multipart/form-data')
-	@ApiResponseDecorator([400, { code: 200, description: 'entity: ${Entity[]}' }])
+	@ApiResponseDecorator([400, { code: 200, description: 'entity: Entity' }])
 	@UseInterceptors(AnyFilesInterceptor())
 	@Put(':id')
 	async putById(
@@ -122,13 +120,34 @@ export class CrudController {
 		...rest: any[]
 	): Promise<CrudResponse> {
 		const { dto: transformedDto, files: transformedFiles } =
-			await this.service.validateBeforeUpdating(id, dto, files, req);
-		const entity = await this.service.updateById(id, transformedDto, transformedFiles, req);
+			await this.service.validateBeforePutting(id, dto, files, req);
+		const entity = await this.service.putById(id, transformedDto, transformedFiles, req);
 		return {
 			statusCode: 200,
 			entity: await this.service.findOneById(entity.id, {
 				include: this.service.getDetailInclude(),
 			}),
+		};
+	}
+
+	@ApiConsumes('multipart/form-data')
+	@ApiResponseDecorator([400, { code: 200, description: 'entities: Entity[]' }])
+	@UseInterceptors(AnyFilesInterceptor())
+	@Put('bulk/put')
+	async putByIds(
+		@Body() dto: Record<string, any>,
+		@UploadedFiles() files = {},
+		@Req() req: Request,
+		...rest: any[]
+	): Promise<CrudResponse> {
+		const chunks = await this.service.validateBeforeBulkPutting(dto, files, req);
+		const entities = await this.service.bulkPut(chunks, req);
+		return {
+			statusCode: 200,
+			entities: await this.service.findAllByIds(
+				entities.map((v) => v.id),
+				{ include: this.service.getDetailInclude() },
+			),
 		};
 	}
 
@@ -157,8 +176,8 @@ export class CrudController {
 		@Req() req?: Request,
 		...rest: any[]
 	): Promise<CrudResponse> {
-		const transformedDto = await this.service.validateDto(BulkDeleteDto, dto);
-		for (const id of transformedDto.ids) {
+		const parsedDto = await this.service.validateDto(BulkDeleteDto, dto);
+		for (const id of parsedDto.ids) {
 			await this.service.validateBeforeRemoving(id, force, req);
 			await this.service.removeById(id);
 		}

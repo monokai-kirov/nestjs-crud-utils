@@ -14,7 +14,7 @@ export class CrudValidationService<T> {
 		files: Files,
 		req: Request,
 	): Promise<ValidateResult> {
-		return this.validateHelper(context, null, dto, files, req);
+		return this.validateSingle(context, null, dto, files, req);
 	}
 
 	public async validateBeforeBulkCreating(
@@ -23,23 +23,10 @@ export class CrudValidationService<T> {
 		files: Files,
 		req: Request,
 	): Promise<ValidateResult[]> {
-		dto = await context.validateDto(BulkCreateUpdateDto, dto);
-		const chunks = [];
-
-		for (const [index, chunk] of dto.bulk.entries()) {
-			const parsedChunk = await this.validateHelper(
-				context,
-				null,
-				chunk,
-				context.getIndividualFiles(dto, files, index),
-				req,
-			);
-			chunks.push(parsedChunk);
-		}
-		return chunks;
+		return this.validateMultiple(context, dto, files, req);
 	}
 
-	public async validateBeforeUpdating(
+	public async validateBeforePutting(
 		context: CrudService<T>,
 		id: string,
 		dto: Record<string, any>,
@@ -47,7 +34,16 @@ export class CrudValidationService<T> {
 		req: Request,
 	): Promise<ValidateResult> {
 		await context.validateMandatoryId(id);
-		return this.validateHelper(context, id, dto, files, req);
+		return this.validateSingle(context, id, dto, files, req);
+	}
+
+	public async validateBeforeBulkPutting(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+	): Promise<ValidateResult[]> {
+		return this.validateMultiple(context, dto, files, req, true);
 	}
 
 	public async validateBeforeRemoving(
@@ -162,51 +158,92 @@ export class CrudValidationService<T> {
 		await this.validateUploadRequest(context, id, dto, files);
 	}
 
-	protected async validateHelper(
+	protected async validateSingle(
 		context: CrudService<T>,
 		id: string | null,
 		dto: Record<string, any>,
 		files: Files,
 		req: Request,
 	): Promise<ValidateResult> {
+		let parsedDto = dto;
 		if (context.crudOptions.withDtoValidation) {
-			dto = await context.validateDto(context.getDtoType(dto), dto);
+			parsedDto = await context.validateDto(context.getDtoType(parsedDto), parsedDto);
 		}
 
-		await this.validateSameCodeIfNecessary(context, id, dto);
+		await this.validateSameCodeIfNecessary(context, id, parsedDto);
 
 		if (context.crudOptions.withRelationValidation) {
-			await this.validateRelations(context, dto);
+			await this.validateRelations(context, parsedDto);
 		}
-		dto = await this.validateAdvancedMultipleRelations(context, id, dto);
+		parsedDto = await this.validateAdvancedMultipleRelations(context, id, parsedDto);
 
 		const normalizedFiles = utils.normalizeFiles(files);
 		if (context.crudOptions.withUploadValidation) {
 			if (!id) {
-				await this.validateUploadCreateRequest(context, dto, normalizedFiles);
+				await this.validateUploadCreateRequest(context, parsedDto, normalizedFiles);
 			} else {
-				await this.validateUploadUpdateRequest(context, id, dto, normalizedFiles);
+				await this.validateUploadUpdateRequest(context, id, parsedDto, normalizedFiles);
 			}
 		}
 
 		const { dto: transformedDto, files: transformedFiles } = await context.validateRequest(
 			id,
-			dto,
+			parsedDto,
 			normalizedFiles,
 			req,
 		);
 
-		let result;
+		let result: ValidateResult;
 		if (!id) {
-			result = await context.validateCreateRequest(transformedDto, transformedFiles, req);
+			result = await context.validateCreateRequest(
+				context.transformDto(transformedDto),
+				transformedFiles,
+				req,
+			);
 		} else {
-			result = await context.validateUpdateRequest(id, transformedDto, transformedFiles, req);
+			result = await context.validateUpdateRequest(
+				id,
+				context.transformDto(transformedDto),
+				transformedFiles,
+				req,
+			);
 		}
 
 		return {
 			dto: context.transformDto(result.dto),
 			...result,
 		};
+	}
+
+	protected async validateMultiple(
+		context: CrudService<T>,
+		dto: Record<string, any>,
+		files: Files,
+		req: Request,
+		isUpdating = false,
+	): Promise<ValidateResult[]> {
+		const parsedDto = await context.validateDto(BulkCreateUpdateDto, dto);
+		const chunks = [];
+
+		if (isUpdating) {
+			await context.validateMandatoryIds(parsedDto.bulk.map((v) => v.id));
+		}
+
+		for (const [index, chunk] of parsedDto.bulk.entries()) {
+			const parsedChunk = await this.validateSingle(
+				context,
+				chunk.id ?? null,
+				chunk,
+				context.getIndividualFiles(parsedDto, files, index),
+				req,
+			);
+
+			if (isUpdating) {
+				parsedChunk.dto.id = chunk.id;
+			}
+			chunks.push(parsedChunk);
+		}
+		return chunks;
 	}
 
 	protected async validateSameCodeIfNecessary(

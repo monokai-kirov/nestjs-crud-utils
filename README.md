@@ -456,7 +456,7 @@ public getChildModelKey(): string | null {
 // Is used in getAll() in CrudController; default value - { all: true }
 public getListInclude();
 
-// Is used in getById(), create(), bulkCreate(), putById() in CrudController; default value - { all: true }
+// Is used in getById(), create(), bulkCreate(), putById(), bulkPut() in CrudController; default value - { all: true }
 public getDetailInclude();
 
 // For getAll() method in CrudController; default value - ['id', 'title'],
@@ -814,5 +814,5 @@ EmailService and CryptoService
 ## TODO:
 
 ```ts
--- write crudController.patchById(), handle class-validator { always: true }
+-- patchById(), patchByIds() (handle class-validator { always: true })
 ```
