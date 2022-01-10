@@ -501,7 +501,6 @@ export class CrudService<T> extends EntityService<T> {
 		dto: Record<string, any>,
 		processedManyToMany: any[],
 	): Promise<void> {
-		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
 		const options = <ActiveUpdate>this.crudOptions.withActiveUpdate;
 		const isActive = options.calcActive ? options.calcActive(dto) : ((dto) => dto.isActive)(dto);
 
@@ -514,13 +513,8 @@ export class CrudService<T> extends EntityService<T> {
 		await Promise.all(
 			Object.entries(model.associations)
 				.map(([key, value]: any) => value)
-				.filter((association) => associationTypes.includes(association.associationType))
 				.map(async (association) => {
-					const option = <ActiveUpdateOption>(
-						options.childs.find(
-							(v: any) => v === association.target || v.model == association.target,
-						)
-					);
+					const option = <ActiveUpdateOption>childs.find((v: any) => v === association.target);
 					let entities = [];
 					let entitiesToUpdate = [];
 
@@ -530,7 +524,7 @@ export class CrudService<T> extends EntityService<T> {
 						const trueValue = option.trueValue ?? true;
 						const falsyValue = option.falsyValue ?? false;
 
-						if (association.associationType === 'BelongsToMany') {
+						if (['BelongsTo', 'BelongsToMany'].includes(association.associationType)) {
 							if (processedManyToMany.includes(association.source)) {
 								return;
 							}
@@ -561,7 +555,7 @@ export class CrudService<T> extends EntityService<T> {
 							}
 
 							processedManyToMany.push(association.target);
-						} else {
+						} else if (['HasOne', 'HasMany'].includes(association.associationType)) {
 							entitiesToUpdate = await association.target.unscoped().findAll({
 								where: {
 									[utils.snakeCaseToCamel(association.foreignKey)]: {
@@ -602,32 +596,26 @@ export class CrudService<T> extends EntityService<T> {
 		model: Record<string, any>,
 		processedManyToMany: any[],
 	): boolean {
-		const associationTypes = ['HasOne', 'HasMany', 'BelongsToMany'];
-		let isLinked = false;
-
-		const associations = Object.entries(model.associations)
-			.map(([key, value]: any) => value)
-			.filter((association) => associationTypes.includes(association.associationType));
+		const associations = Object.entries(model.associations).map(([key, value]: any) => value);
 
 		for (const association of associations) {
 			if (association.associationType === 'BelongsToMany') {
 				if (processedManyToMany.includes(association.source)) {
-					return;
+					continue;
 				}
 				processedManyToMany.push(association.target);
 			}
 
 			if (comparisonModels.find((v) => v.getTableName() === association.target.getTableName())) {
-				isLinked = true;
-				break;
+				return true;
 			}
 
 			if (association.target.associations?.length) {
-				this.isAssociationLinked(comparisonModels, association.target, processedManyToMany);
+				return this.isAssociationLinked(comparisonModels, association.target, processedManyToMany);
 			}
 		}
 
-		return isLinked;
+		return false;
 	}
 
 	protected checkIncludeHelper(parent: any, child: any, method: string): void {

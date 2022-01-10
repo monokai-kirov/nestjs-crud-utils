@@ -103,6 +103,17 @@ https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-
 docker-compose scale:
 https://brianchristner.io/how-to-scale-a-docker-container-with-docker-compose/
 
+Security:
+helmet: https://helmetjs.github.io/
+rate-limiting: https://docs.nestjs.com/security/rate-limiting
+csrf: https://docs.nestjs.com/security/csrf
+content-security-policy: https://content-security-policy.com/
+ufw: https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu-20-04
+snort: https://linoxide.com/install-snort-on-ubuntu/
+
+Swagger setup:
+https://docs.nestjs.com/openapi/introduction
+
 .env:
 NODE_ENV=development
 
@@ -114,17 +125,6 @@ DB_NAME=somedb
 
 REDIS_HOST=localhost
 REDIS_PORT=6379
-
-Security:
-helmet: https://helmetjs.github.io/
-rate-limiting: https://docs.nestjs.com/security/rate-limiting
-csrf: https://docs.nestjs.com/security/csrf
-content-security-policy: https://content-security-policy.com/
-ufw: https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu-20-04
-snort: https://linoxide.com/install-snort-on-ubuntu/
-
-Swagger setup:
-https://docs.nestjs.com/openapi/introduction
 ```
 
 ## src/app/app.module.ts
@@ -600,11 +600,10 @@ NormalizeBeforeValidationPipe;
 NormalizeAfterValidationPipe;
 OptionalBooleanQueryValidationPipe;
 ValidatePagePipe;
-```
 
-## Normalize example
-
-```ts
+/**
+ * Normalize example
+ */
 // in main.ts
 import { ValidationPipe } from '@nestjs/common';
 import {
