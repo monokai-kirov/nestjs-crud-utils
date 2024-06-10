@@ -13,12 +13,51 @@
 -- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
 ```
 
-# Install
+# What this package can do:
+
+## GET:
+-- sequelize bug fixed @see https://github.com/sequelize/sequelize/issues/7344
+-- correct unscope:
+  --- CrudService { unscoped: true, unscopedInclude: true } - for admin routes
+  --- PublicCrudService: { unscoped: false, unscopedInclude: false } - for public routes
+-- integration with query-parser:
+  crudController.getAll() - ?search=test and other query params support from https://www.npmjs.com/package/sequelize-query
+
+## POST/PUT + bulk POST/PUT:
+-- auto-validation links in methods: create/bulk create/put/bulk put
+-- auto-binding single/multiple/advanced multiple/inheritance links
+-- possibilities for validation/create/update/delete files with postgresql triggers (by default after onApplicationBootstrap hook postgresql triggers (
+	AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
+	If you want to persist Upload files in a different storage (not a local hd; for example if you use kubernetes and AWS, Yandex Bucket etc.) please override UploadService
+	and use overridden class in all CrudService instances as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
+)
+-- integration with sharp - https://www.npmjs.com/package/sharp
+
+## DELETE + bulk DELETE:
+-- getConflictRelations for protect against accidental removing large amount of data
+
+## integration with redis-semaphore - https://www.npmjs.com/package/redis-semaphore:
+--- leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx)
+--- guards, interceptors and filters for auto route protection from race conditions with user linking
+
+decorators/guards/pipes/interceptors/filters:
+-- NormalizationPipe - trim() whitespaces + normalization email/phone recursively
+-- multiple decorators and pipes for validation and sequelize models
+-- TransactionInterceptor
+
+config:
+-- default configs for redis, postgresql, email, cache, throttler, sentry, sharp
+
+other:
+-- EmailService
+-- CryptoService
+
+# Installing:
 
 ## Requirements
 
 ```ts
---postgresql;
+--postgresql with uuid-ossp;
 --redis;
 --sequelize;
 ```
@@ -48,17 +87,12 @@ import { config } from '@monokai-kirov/nestjs-crud-utils';
 // );
 ```
 
-# Crud example
+# Notes and crud example:
 
 ```ts
 /**
  * Notes
  */
-If you want to persist Upload files in a different storage (not a local hd;
-for example if you use kubernetes and AWS, Yandex Bucket etc.)
-please override UploadService and use overridden class in all CrudService instances
-as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
-
 Updating files note:
 if you want to:
 -- persist a previous file - specify the uuid;
@@ -71,29 +105,8 @@ bulk[0][description]
 bulk[0][direction]
 image[0]
 
-crudController.getAll():
-?search=test
-and other query params support from https://www.npmjs.com/package/sequelize-query
-
-Postgresql:
-sudo nano /etc/postgresql/13/main/pg_hba.conf
-# "local" is for Unix domain socket connections only
-local   all   all   md5 # please change peer to md5
-sudo service postgresql restart;
-sudo -u postgres psql;
-CREATE USER someuser;
-\password someuser
-CREATE DATABASE somedb;
-GRANT ALL PRIVILEGES ON DATABASE somedb TO someuser;
-\c somedb
-CREATE extension IF NOT EXISTS "uuid-ossp";
-exit
-
 pgtune:
 https://pgtune.leopard.in.ua/
-
-Redis:
-https://www.digitalocean.com/community/tutorials/how-to-install-and-secure-redis-on-ubuntu-20-04
 
 nginx:
 https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/
@@ -524,7 +537,7 @@ validateAndParseArrayOfJsonsWithOneKey();
 validateAndParseArrayOfJsonsWithMultipleKeys();
 ```
 
-# Decorators list
+# Decorators:
 
 ```ts
 @StringDecorator()
@@ -585,7 +598,7 @@ validateAndParseArrayOfJsonsWithMultipleKeys();
 @ApiResponseDecorator()
 ```
 
-## Guards
+## Guards:
 
 ```ts
 GatewayThrottlerGuard; // just an example from the docs
@@ -593,7 +606,7 @@ MutexGuard;
 WsMutexGuard;
 ```
 
-## Pipes
+## Pipes:
 
 ```ts
 NormalizeBeforeValidationPipe;
@@ -618,7 +631,7 @@ app.useGlobalPipes(
 );
 ```
 
-## Interceptors
+## Interceptors:
 
 ```ts
 ReleaseMutexInterceptor;
@@ -641,14 +654,14 @@ const { httpAdapter } = app.get(HttpAdapterHost);
 app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 ```
 
-## Filters
+## Filters:
 
 ```ts
 AllExceptionsFilter
 AllWsExceptionsFilter (fix ws errors and catch postgresql 40001 thrown by SERIALIZABLE isolation level if TransactionInterceptor is used)
 ```
 
-## Leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx)
+## Leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx):
 
 ```ts
 // package safe-redis-leader is being used
@@ -687,7 +700,7 @@ export class OptionsService extends EntityService<Options> {
 }
 ```
 
-## Config
+## Config:
 
 ```ts
 /**
@@ -804,16 +817,4 @@ public getSentryOptions() {
 	dsn: process.env.SENTRY_DSN,
 	tracesSampleRate: 1.0;
 }
-```
-
-## Other services in the package
-
-```ts
-EmailService and CryptoService
-```
-
-## TODO:
-
-```ts
--- patchById(), bulkPatch() (handle class-validator { always: true })
 ```
