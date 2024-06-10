@@ -13,7 +13,7 @@
 -- dependencies for uploadService.handleVideo() and this method were removed (mac issues)
 ```
 
-# What this package can do:
+# Package features:
 
 ## GET:
 
