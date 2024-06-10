@@ -16,41 +16,62 @@
 # What this package can do:
 
 ## GET:
--- sequelize bug fixed @see https://github.com/sequelize/sequelize/issues/7344
--- correct unscope:
-  --- CrudService { unscoped: true, unscopedInclude: true } - for admin routes
-  --- PublicCrudService: { unscoped: false, unscopedInclude: false } - for public routes
--- integration with query-parser:
+
+```ts
+- sequelize bug fixed @see https://github.com/sequelize/sequelize/issues/7344;
+- correct unscope:
+  -- CrudService { unscoped: true, unscopedInclude: true } - for admin routes
+  -- PublicCrudService: { unscoped: false, unscopedInclude: false } - for public routes
+- integration with query-parser:
   crudController.getAll() - ?search=test and other query params support from https://www.npmjs.com/package/sequelize-query
+```
 
 ## POST/PUT + bulk POST/PUT:
--- auto-validation links in methods: create/bulk create/put/bulk put
--- auto-binding single/multiple/advanced multiple/inheritance links
--- possibilities for validation/create/update/delete files with postgresql triggers (by default after onApplicationBootstrap hook postgresql triggers (
+
+```ts
+- links auto-validation in methods: create/bulk create/put/bulk put
+- single/multiple/advanced multiple/inheritance links auto-binding
+- possibilities for validation/create/update/delete files with postgresql triggers (by default after onApplicationBootstrap hook postgresql triggers (
 	AFTER DELETE for Upload entity) will be created (to delete file from the hard drive)
 	If you want to persist Upload files in a different storage (not a local hd; for example if you use kubernetes and AWS, Yandex Bucket etc.) please override UploadService
 	and use overridden class in all CrudService instances as a third parameter. Also override writeBufferToStorage() and remove() methods in that class.
 )
--- integration with sharp - https://www.npmjs.com/package/sharp
+- integration with sharp - https://www.npmjs.com/package/sharp
+```
 
 ## DELETE + bulk DELETE:
--- getConflictRelations for protect against accidental removing large amount of data
 
-## integration with redis-semaphore - https://www.npmjs.com/package/redis-semaphore:
---- leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx)
---- guards, interceptors and filters for auto route protection from race conditions with user linking
+```ts
+- getConflictRelations for protect against accidental removing large amount of data
+```
 
-decorators/guards/pipes/interceptors/filters:
--- NormalizationPipe - trim() whitespaces + normalization email/phone recursively
--- multiple decorators and pipes for validation and sequelize models
--- TransactionInterceptor
+## Integration with redis-semaphore - https://www.npmjs.com/package/redis-semaphore:
 
-config:
+```ts
+- leader election (for preventing multiple invokes @Cron() decorators or nestjs' hooks if you're using multiple app instances behind reverse proxy like nginx)
+- guards, interceptors and filters for auto route protection from race conditions with user linking
+```
+
+## decorators/guards/pipes/interceptors/filters:
+
+```ts
+- NormalizationPipe - trim() whitespaces + normalization email/phone recursively
+- multiple decorators and pipes for validation and sequelize models
+- TransactionInterceptor
+```
+
+## Config:
+
+```ts
 -- default configs for redis, postgresql, email, cache, throttler, sentry, sharp
+```
 
-other:
--- EmailService
--- CryptoService
+## Others services in the package:
+
+```ts
+- EmailService
+- CryptoService
+```
 
 # Installing:
 
